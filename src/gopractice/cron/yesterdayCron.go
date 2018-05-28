@@ -43,6 +43,7 @@ func yesterdayCron() {
 		return
 	}
 
+	//todo 少了一个pvCount TODO
 	var uvCount map[string]uint
 	uvErr := model.MongoDB.C("userVisit").Pipe(
 		[]bson.M{
@@ -69,5 +70,24 @@ func yesterdayCron() {
 		yesterdayUV = uvCount["uv"]
 	}
 
-	//todo
+	yesterdayStr := util.GetYesterdayYMD("-")
+	_,err := model.MongoDB.C("yesterdayStats").Upsert(bson.M{
+		"date":yesterdayStr,
+	},bson.M{
+		"$set":bson.M{
+			"date":yesterdayStr,
+			"signupUserCount":yesterdaySignupUserCount,
+			"topicCount":yesterdayTopicCount,
+			"commentCount":yesterdayCommentCount,
+			"bookCount":yesterdayBoolCount,
+			"pv":yesterdayPV,
+			"uv":yesterdayUV,
+
+		},
+	})
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
 }

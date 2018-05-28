@@ -3,6 +3,7 @@ package util
 import (
 	"time"
 	"strconv"
+	"strings"
 )
 
 func StrToIntMonth(month string) int {
@@ -47,6 +48,15 @@ func GetTodayYMD(sep string) string {
 	}
 
 	return strconv.Itoa(year) + sep + monthStr + sep + dateStr
+}
+
+func GetYesterdayYMD(sep string) string {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+	yesterday := today.Unix() - 24*60*60
+	yesterdayTime := time.Unix(yesterday,0)
+	yesterdayYMD := yesterdayTime.Format("2018-05-28")
+	return strings.Replace(yesterdayYMD,"-",sep,-1)
 }
 
 //返回今天0点的时间
