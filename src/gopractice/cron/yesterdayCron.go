@@ -1,5 +1,10 @@
 package cron
 
+import (
+	"gopractice/util"
+	"gopractice/model"
+)
+
 //这里是数据统计功能
 func yesterdayCron() {
 	var yesterdaySignupUserCount uint //昨天新建用户数
@@ -9,6 +14,11 @@ func yesterdayCron() {
 	var yesterdayPV int               //昨天的PV
 	var yesterdayUV int               //昨天的UV
 
+	todayTime := util.GetTodayTime()
+	yesterdayTime := util.GetYesterdayTime()
 
+	if model.DB.Model() {
+
+	}
 
 }

@@ -26,7 +26,7 @@ func StrToIntMonth(month string) int {
 }
 
 func GetTodayYMD(sep string) string {
-	now := time.Now()  //获取现在的时间
+	now := time.Now() //获取现在的时间
 	year := now.Year()
 	month := StrToIntMonth(now.Month().String())
 	date := now.Day()
@@ -35,16 +35,33 @@ func GetTodayYMD(sep string) string {
 	var dateStr string
 
 	if month < 9 {
-		monthStr = "0" + strconv.Itoa(month + 1)
-	}else {
+		monthStr = "0" + strconv.Itoa(month+1)
+	} else {
 		monthStr = strconv.Itoa(month + 1)
 	}
 
 	if date < 10 {
 		dateStr = "0" + strconv.Itoa(date)
-	}else {
+	} else {
 		dateStr = strconv.Itoa(date)
 	}
 
 	return strconv.Itoa(year) + sep + monthStr + sep + dateStr
+}
+
+//返回今天0点的时间
+func GetTodayTime() time.Time {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+
+	return today
+}
+
+//返回昨天0点的时间  today.Unix()  返回从1970到现在所经过的秒数
+func GetYesterdayTime() time.Time {
+	now := time.Now()
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.Local)
+	yesterday := today.Unix() - 24*60*60
+
+	return time.Unix(yesterday,0)
 }
