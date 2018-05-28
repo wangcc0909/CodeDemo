@@ -12,29 +12,29 @@ import (
 )
 
 type User struct {
-	ID           uint      `gorm:"primary_key" json:"id"`
-	CreateAt     time.Time `json:"createAt"`
-	UpdateAt     time.Time `json:"updateAt"`
-	DeleteAt     time.Time `json:"deleteAt"`
-	ActivateAt   time.Time `json:"activateAt"`
-	Name         string    `json:"name"`
-	Pass         string    `json:"-"`
-	Email        string    `json:"email"`
-	Sex          uint      `json:"sex"`
-	Location     string    `json:"location"`
-	Introduce    string    `json:"introduce"`
-	Phone        string    `json:"phone"`
-	Score        uint      `json:"score"`
-	ArticleCount uint      `json:"articleCount"`
-	CommentCount uint      `json:"commentCount"`
-	CollectCount uint      `json:"collectCount"`
-	Signature    string    `json:"signature"`
-	Role         int       `json:"role"`
-	AvatarURL    string    `json:"avatarURL"`
-	CoverURL     string    `json:"coverURL"`
-	Status       int       `json:"status"`
-	Schools      []School  `json:"schools"`
-	Careers      []Career  `json:"careers"`
+	ID           uint       `gorm:"primary_key" json:"id"`
+	CreateAt     time.Time  `json:"createAt"`
+	UpdateAt     time.Time  `json:"updateAt"`
+	DeleteAt     *time.Time `sql:"index" json:"deleteAt"`
+	ActivateAt   time.Time  `json:"activateAt"`
+	Name         string     `json:"name"`
+	Pass         string     `json:"-"`
+	Email        string     `json:"email"`
+	Sex          uint       `json:"sex"`
+	Location     string     `json:"location"`
+	Introduce    string     `json:"introduce"`
+	Phone        string     `json:"phone"`
+	Score        uint       `json:"score"`
+	ArticleCount uint       `json:"articleCount"`
+	CommentCount uint       `json:"commentCount"`
+	CollectCount uint       `json:"collectCount"`
+	Signature    string     `json:"signature"`
+	Role         int        `json:"role"`
+	AvatarURL    string     `json:"avatarURL"`
+	CoverURL     string     `json:"coverURL"`
+	Status       int        `json:"status"`
+	Schools      []School   `json:"schools"`
+	Careers      []Career   `json:"careers"`
 }
 
 func (user User) CheckPassword(password string) bool {
@@ -72,37 +72,36 @@ func UserFromRedis(userId uint) (User, error) {
 
 	defer conn.Close()
 
-	result,err := redis.Bytes(conn.Do("GET",loginUser))
+	result, err := redis.Bytes(conn.Do("GET", loginUser))
 	if err != nil {
 		fmt.Println(err.Error())
-		return User{},err
+		return User{}, err
 	}
 
 	var user User
-	err = json.Unmarshal(result,&user)
+	err = json.Unmarshal(result, &user)
 	if err != nil {
 		return User{}, errors.New("未登录  no login")
 	}
 
-
-	return user,nil
+	return user, nil
 }
 
 func UserToRedis(user User) error {
-	result,err := json.Marshal(user)
+	result, err := json.Marshal(user)
 	if err != nil {
 		fmt.Println(err.Error())
 		return err
 	}
 
-	loginUserKey := fmt.Sprintf("%s%d",LoginUser,user.ID)
+	loginUserKey := fmt.Sprintf("%s%d", LoginUser, user.ID)
 
 	conn := RedisPool.Get()
 	defer conn.Close()
 
-	_,err = conn.Do("SET",loginUserKey,result,"EX",config.ServerConfig.TokenMaxAge)
+	_, err = conn.Do("SET", loginUserKey, result, "EX", config.ServerConfig.TokenMaxAge)
 	if err != nil {
-		fmt.Println("redis set filed: ",err.Error())
+		fmt.Println("redis set filed: ", err.Error())
 		return err
 	}
 
