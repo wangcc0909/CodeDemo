@@ -4,6 +4,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gopractice/config"
 	"gopractice/middleware"
+	"gopractice/cotroller/user"
 )
 
 func Route(router *gin.Engine) {
@@ -12,7 +13,7 @@ func Route(router *gin.Engine) {
 	api := router.Group(apiPrefix, middleware.RefreshTokenCookie)
 	{
 		api.GET("/siteinfo",)
-		api.POST("/login",user.Sin)
+		api.POST("/login",user.Signin)
 	}
 
 }

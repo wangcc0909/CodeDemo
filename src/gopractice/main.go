@@ -8,6 +8,8 @@ import (
 	"os"
 	"io"
 	"gopractice/middleware"
+	"gopractice/router"
+	"gopractice/cron"
 )
 
 func main() {
@@ -38,6 +40,11 @@ func main() {
 
 	app.Use(middleware.APIStatsD())
 
+	router.Route(app)
 
-	
+	if config.ServerConfig.StatsEnable {
+		cron.New().Start()
+	}
+
+	app.Run(":" + fmt.Sprintf("%d",config.ServerConfig.Port))
 }
