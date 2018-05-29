@@ -66,4 +66,5 @@ func initMongoDB() {
 func init() {
 	initDB()
 	initRedisDB()
+	initMongoDB()
 }

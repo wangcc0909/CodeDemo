@@ -13,8 +13,8 @@ func yesterdayCron() {
 	var yesterdayTopicCount uint      //昨天新建话题数
 	var yesterdayCommentCount uint    //昨天回复数
 	var yesterdayBoolCount uint       //昨天新建图书数
-	var yesterdayPV int               //昨天的PV
-	var yesterdayUV uint               //昨天的UV
+	var yesterdayPV uint               //昨天的PV
+	var yesterdayUV uint              //昨天的UV
 
 	todayTime := util.GetTodayTime()
 	yesterdayTime := util.GetYesterdayTime()
@@ -43,7 +43,28 @@ func yesterdayCron() {
 		return
 	}
 
-	//todo 少了一个pvCount TODO
+	var pvCount map[string]uint
+
+	pvErr := model.MongoDB.C("userVisit").Pipe(
+		[]bson.M{
+			{
+				"$match": bson.M{
+					"date": bson.M{
+						"$gte": yesterdayTime,
+						"$lt":  todayTime,
+					},
+				},
+			},
+			{"$count":"pv"},
+		},
+	).AllowDiskUse().One(&pvCount)
+
+	if pvErr != nil {
+		fmt.Println(pvErr.Error())
+	} else {
+		yesterdayPV = pvCount["uv"]
+	}
+
 	var uvCount map[string]uint
 	uvErr := model.MongoDB.C("userVisit").Pipe(
 		[]bson.M{
@@ -56,33 +77,32 @@ func yesterdayCron() {
 				},
 			},
 			{
-				"$group":bson.M{
-					"_id":"$clientID",
+				"$group": bson.M{
+					"_id": "$clientID",
 				},
 			},
-			{"$count":"uv"},
+			{"$count": "uv"},
 		},
 	).AllowDiskUse().One(&uvCount)
 
 	if uvErr != nil {
 		fmt.Println(uvErr.Error())
-	}else {
+	} else {
 		yesterdayUV = uvCount["uv"]
 	}
 
 	yesterdayStr := util.GetYesterdayYMD("-")
-	_,err := model.MongoDB.C("yesterdayStats").Upsert(bson.M{
-		"date":yesterdayStr,
-	},bson.M{
-		"$set":bson.M{
-			"date":yesterdayStr,
-			"signupUserCount":yesterdaySignupUserCount,
-			"topicCount":yesterdayTopicCount,
-			"commentCount":yesterdayCommentCount,
-			"bookCount":yesterdayBoolCount,
-			"pv":yesterdayPV,
-			"uv":yesterdayUV,
-
+	_, err := model.MongoDB.C("yesterdayStats").Upsert(bson.M{
+		"date": yesterdayStr,
+	}, bson.M{
+		"$set": bson.M{
+			"date":            yesterdayStr,
+			"signupUserCount": yesterdaySignupUserCount,
+			"topicCount":      yesterdayTopicCount,
+			"commentCount":    yesterdayCommentCount,
+			"bookCount":       yesterdayBoolCount,
+			"pv":              yesterdayPV,
+			"uv":              yesterdayUV,
 		},
 	})
 

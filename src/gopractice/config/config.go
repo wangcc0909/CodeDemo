@@ -147,10 +147,21 @@ func initServer() {
 	ServerConfig.LogFile = ServerConfig.LogDir + ymdStr + ".log"
 }
 
+type statsDConfig struct {
+	URL string
+	Prefix string
+}
+
+var StatsDConfig statsDConfig
+func initStatsD() {
+	util.SetStructByJson(&StatsDConfig,jsonData["statsd"].(map[string]interface{}))
+}
+
 func init() {
 	initJson()
 	initDB()
 	initRedis()
 	initMongo()
 	initServer()
+	initStatsD()
 }
