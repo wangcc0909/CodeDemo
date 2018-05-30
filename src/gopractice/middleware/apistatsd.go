@@ -31,7 +31,7 @@ func getReqPath(c *gin.Context) string {
 	return strings.Join(pathArr, "_")
 }
 
-func APIStatsD() gin.HandlerFunc {
+func APIStatsD() gin.HandlerFunc { //gin中间件
 
 	return func(c *gin.Context) {
 		t := time.Now()

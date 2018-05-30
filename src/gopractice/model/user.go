@@ -109,6 +109,23 @@ func UserToRedis(user User) error {
 }
 
 const (
+	//普通用户
+	UserRoleNormal = 1
+
+	//网站编辑
+	UserRoleEditor = 2
+
+	//管理员
+	UserRoleAdmin = 3
+
+	//超级管理员
+	UserRoleSuperAdmin = 4
+
+	//爬虫
+	UserRoleCrawler = 5
+)
+
+const (
 	//user inactive  用户未激活
 	UserStatusInActive = 1
 

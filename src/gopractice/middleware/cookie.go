@@ -16,7 +16,6 @@ func RefreshTokenCookie(c *gin.Context) {
 	if token != "" && err == nil {
 		c.SetCookie("token", token, config.ServerConfig.TokenMaxAge, "/", "", true, true)
 		if user, err := getUser(c); err == nil {
-
 			err = model.UserToRedis(user)
 		}
 	}

@@ -2,6 +2,7 @@ package model
 
 import "time"
 
+//评论
 type Comment struct {
 	ID          uint       `gorm:"primary_key" json:"id"`
 	CreateAt    time.Time  `json:"createAt"`

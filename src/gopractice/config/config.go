@@ -23,7 +23,7 @@ func initJson() {
 
 	configStr := string(result[:])
 
-	reg := regexp.MustCompile(`/\*.*\*/`)
+	reg := regexp.MustCompile(`/\*.*\*/`)//这里是将所有的注释都删掉
 
 	configStr = reg.ReplaceAllString(configStr, "")
 	result = []byte(configStr)

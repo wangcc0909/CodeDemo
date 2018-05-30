@@ -5,6 +5,7 @@ import (
 	"gopractice/config"
 	"gopractice/middleware"
 	"gopractice/cotroller/user"
+	"gopractice/cotroller/common"
 )
 
 func Route(router *gin.Engine) {
@@ -12,8 +13,10 @@ func Route(router *gin.Engine) {
 
 	api := router.Group(apiPrefix, middleware.RefreshTokenCookie)
 	{
-		api.GET("/siteinfo",)
+		api.GET("/siteinfo",common.SiteInfo)
 		api.POST("/login",user.Signin)
+		api.POST("/signup",user.Signup)
+
 	}
 
 }
