@@ -17,6 +17,8 @@ func Route(router *gin.Engine) {
 		api.POST("/login",user.Signin)
 		api.POST("/signup",user.Signup)
 		api.POST("/signout",middleware.SigninRequired,user.Signout)
+		api.POST("/upload",middleware.SigninRequired,common.UploadHandler)
+
 
 	}
 

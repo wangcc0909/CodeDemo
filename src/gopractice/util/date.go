@@ -26,6 +26,21 @@ func StrToIntMonth(month string) int {
 
 }
 
+func GetTodayYM(sep string) string {
+	now := time.Now()
+	year := now.Year()
+	month := StrToIntMonth(now.Month().String())
+
+	var monthStr string
+	if month < 9 {
+		monthStr = "0" + strconv.Itoa(month+1)
+	} else {
+		monthStr = strconv.Itoa(month + 1)
+	}
+
+	return strconv.Itoa(year) + sep + monthStr
+}
+
 func GetTodayYMD(sep string) string {
 	now := time.Now() //获取现在的时间
 	year := now.Year()
