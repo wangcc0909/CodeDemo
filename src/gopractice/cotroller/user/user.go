@@ -239,5 +239,26 @@ func Signup(c *gin.Context) {
 			"email":user.Email,
 		},
 	})
+}
+
+func Signout(c *gin.Context) {
+	userInner,exist := c.Get("user")
+	var user model.User
+	if exist {
+		user = userInner.(model.User)
+		conn := model.RedisPool.Get()
+		defer conn.Close()
+
+		_,err := conn.Do("DEL",fmt.Sprintf("%s%d",model.LoginUser,user.ID))
+		if err != nil {
+			fmt.Println("redis delete error ",err)
+		}
+	}
+
+	c.JSON(http.StatusOK,gin.H{
+		"errNo":model.ErrorCode.SUCCESS,
+		"msg":"success",
+		"data":gin.H{},
+	})
 
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"errors"
 	"gopractice/config"
+	"gopractice/cotroller/common"
 )
 
 func getUser(c *gin.Context) (model.User, error) {
@@ -42,4 +43,19 @@ func getUser(c *gin.Context) (model.User, error) {
 	}
 
 	return user, errors.New("未登录")
+}
+
+func SigninRequired(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+
+	var user model.User
+	var err error
+
+	if user, err = getUser(c);err != nil {
+		sendErrJson("未登录",model.ErrorCode.LoginTimeOut)
+		return
+	}
+
+	c.Set("user",user)
+	c.Next()
 }
