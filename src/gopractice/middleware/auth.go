@@ -59,3 +59,24 @@ func SigninRequired(c *gin.Context) {
 	c.Set("user",user)
 	c.Next()
 }
+
+func EditorRequired(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+
+	var user model.User
+	var err error
+
+	if user, err = getUser(c);err != nil {
+		sendErrJson("未登录",model.ErrorCode.LoginTimeOut)
+		return
+	}
+
+	if user.Role == model.UserRoleEditor || user.Role == model.UserRoleAdmin ||
+		user.Role == model.UserRoleSuperAdmin || user.Role == model.UserRoleCrawler {
+		c.Set("user",user)
+		c.Next()
+	}else {
+		sendErrJson("没有权限",c)
+	}
+
+}

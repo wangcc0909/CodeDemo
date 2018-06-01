@@ -8,6 +8,7 @@ import (
 	"gopractice/cotroller/common"
 )
 
+//这里就是接口
 func Route(router *gin.Engine) {
 	apiPrefix := config.ServerConfig.APIPrefix
 
@@ -18,6 +19,7 @@ func Route(router *gin.Engine) {
 		api.POST("/signup",user.Signup)
 		api.POST("/signout",middleware.SigninRequired,user.Signout)
 		api.POST("/upload",middleware.SigninRequired,common.UploadHandler)
+		api.POST("crawlnotsavecontent",middleware.EditorRequired,)
 
 
 	}
