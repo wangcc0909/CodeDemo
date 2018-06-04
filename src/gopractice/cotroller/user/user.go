@@ -735,6 +735,189 @@ func AddSchool(c *gin.Context) {
 		"msg":   "success",
 		"data":  school,
 	})
+}
+
+func DeleteCareer(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var id int
+	var err error
+	if id, err = strconv.Atoi(c.Param("id")); err != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	var career model.Career
+
+	if err := model.DB.First(&career, id).Error; err != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	if err := model.DB.Delete(&career).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"id": career.ID,
+		},
+	})
+}
+
+func DeleteSchool(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var id int
+	var err error
+	if id, err = strconv.Atoi(c.Param("id")); err != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	var school model.School
+
+	if err := model.DB.First(&school, id).Error; err != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	if err := model.DB.Delete(&school).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"id": school.ID,
+		},
+	})
+}
+
+func UpdateInfo(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var userReqData model.User
+	if err := c.ShouldBindJSON(&userReqData); err != nil {
+		sendErrJson("参数无效", c)
+		return
+	}
+
+	userInter, _ := c.Get("user")
+	user := userInter.(model.User)
+	field := c.Param("field")
+	resData := make(map[string]interface{})
+	resData["id"] = user.ID
+	switch field {
+	case "sex":
+		if userReqData.Sex != model.UserSexMale && userReqData.Sex != model.UserSexFeMale {
+			sendErrJson("无效的性别", c)
+			return
+		}
+		if err := model.DB.Model(&user).Update("sex", &userReqData.Sex).Error; err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error", c)
+			return
+		}
+		resData[field] = userReqData.Sex
+	case "signature":
+		userReqData.Signature = util.AvoidXss(userReqData.Signature)
+		userReqData.Signature = strings.TrimSpace(userReqData.Signature)
+
+		if utf8.RuneCountInString(userReqData.Signature) > model.MaxSignatureLen {
+			sendErrJson("个性签名不能超过"+fmt.Sprintf("%d", model.MaxSignatureLen)+"个字符", c)
+			return
+		}
+		if err := model.DB.Model(&user).Update("signature", &userReqData.Signature).Error; err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error", c)
+			return
+		}
+		resData[field] = userReqData.Signature
+	case "location":
+		userReqData.Location = util.AvoidXss(userReqData.Location)
+		userReqData.Location = strings.TrimSpace(userReqData.Location)
+
+		if utf8.RuneCountInString(userReqData.Location) > model.MaxLocationLen {
+			sendErrJson("居住地不能超过"+fmt.Sprintf("%d", model.MaxLocationLen)+"个字符", c)
+			return
+		}
+		if err := model.DB.Model(&user).Update("location", &userReqData.Location).Error; err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error", c)
+			return
+		}
+		resData[field] = userReqData.Location
+	case "introduce":
+		userReqData.Introduce = util.AvoidXss(userReqData.Introduce)
+		userReqData.Introduce = strings.TrimSpace(userReqData.Introduce)
+
+		if utf8.RuneCountInString(userReqData.Introduce) > model.MaxIntroduceLen {
+			sendErrJson("个人简介不能超过"+fmt.Sprintf("%d", model.MaxIntroduceLen)+"个字符", c)
+			return
+		}
+		if err := model.DB.Model(&user).Update("introduce", &userReqData.Introduce).Error; err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error", c)
+			return
+		}
+		resData[field] = userReqData.Introduce
+	default:
+		sendErrJson("参数无效", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data":  resData,
+	})
+
+}
+
+//更新密码
+func UpdatePassword(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	type UserReqData struct {
+		Password string `json:"password" binding:"required,min=6,max=20"`
+		NewPwd   string `json:"newPwd" binding:"required,min=6,max=20"`
+	}
+
+	var userReqData UserReqData
+
+	if err := c.ShouldBindJSON(&userReqData); err != nil {
+		sendErrJson("参数错误", c)
+		return
+	}
+
+	userInter, _ := c.Get("user")
+	user := userInter.(model.User)
+
+	if err := model.DB.First(&user, user.ID).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	if user.CheckPassword(userReqData.Password) {
+		user.Pass = user.EntryPassword(userReqData.NewPwd, user.Salt())
+		if err := model.DB.Save(&user).Error; err != nil {
+			sendErrJson("原密码不正确", c)
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"errNo": model.ErrorCode.SUCCESS,
+			"msg":   "success",
+			"data":  gin.H{},
+		})
+	} else {
+
+		sendErrJson("原密码不正确", c)
+		return
+
+	}
 
 }
 
