@@ -256,6 +256,51 @@ func VerifyResetPasswordLink(c *gin.Context) {
 
 }
 
+func ResetPassword(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	type UserReqData struct {
+		Password string `json:"password" binding:"required,min=6,max=20"`
+	}
+
+	var userReqData UserReqData
+
+	err := c.ShouldBindJSON(&userReqData)
+	if err != nil {
+		sendErrJson("参数无效", c)
+		return
+	}
+
+	var user model.User
+	var verifyErr error
+
+	if user, verifyErr = verifyLink(model.ResetTime, c); verifyErr != nil {
+		sendErrJson("重置链接已失效", c)
+		return
+	}
+
+	if user.ID <= 0 {
+		sendErrJson("重置链接已失效", c)
+		return
+	}
+
+	if err := model.DB.Model(&user).Update("pass", user.Pass).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	RedisConn := model.RedisPool.Get()
+	if _, err := RedisConn.Do("DEL", fmt.Sprintf("%s%d", model.ResetTime, user.ID)); err != nil {
+		fmt.Println("redis delete failed:", err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data":  gin.H{},
+	})
+
+}
+
 func Signin(c *gin.Context) {
 	sendErrJson := common.SendErrJson
 
@@ -463,5 +508,157 @@ func Signout(c *gin.Context) {
 		"msg":   "success",
 		"data":  gin.H{},
 	})
+}
 
+func SecretInfo(c *gin.Context) {
+	if user, exist := c.Get("user"); exist {
+		c.JSON(http.StatusOK, gin.H{
+			"errNo": model.ErrorCode.SUCCESS,
+			"msg":   "success",
+			"data": gin.H{
+				"user": user,
+			},
+		})
+	}
+}
+
+// InfoDetail 返回用户详情信息(教育经历、职业经历等)，包含一些私密字段
+func InfoDetail(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+
+	userInter, _ := c.Get("user")
+	user := userInter.(model.User)
+
+	if err := model.DB.First(&user, user.ID).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	if err := model.DB.Model(&user).Related(&user.Schools).Error; err != nil {
+		sendErrJson(err.Error(), c)
+		return
+	}
+
+	if err := model.DB.Model(&user).Related(&user.Careers).Error; err != nil {
+		sendErrJson(err.Error(), c)
+		return
+	}
+
+	if user.Sex == model.UserSexFeMale {
+		user.CoverURL = "https://www.golang123.com/upload/img/2017/09/13/d20f62c6-bd11-4739-b79b-48c9fcbce392.jpg"
+	} else {
+		user.CoverURL = "https://www.golang123.com/upload/img/2017/09/13/e672995e-7a39-4a05-9673-8802b1865c46.jpg"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"user": user,
+		},
+	})
+}
+
+func PublicInfo(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var userID int
+	var err error
+
+	if userID, err = strconv.Atoi(c.Param("id")); err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	var user model.User
+
+	if err = model.DB.First(&user, userID).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	if user.Sex == model.UserSexFeMale {
+		user.CoverURL = "https://www.golang123.com/upload/img/2017/09/13/d20f62c6-bd11-4739-b79b-48c9fcbce392.jpg"
+	} else {
+		user.CoverURL = "https://www.golang123.com/upload/img/2017/09/13/e672995e-7a39-4a05-9673-8802b1865c46.jpg"
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"user": user,
+		},
+	})
+}
+
+func UploadAvatar(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+
+	data, err := common.Upload(c)
+	if err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"errNo": model.ErrorCode.ERROR,
+			"msg":   err.Error(),
+			"data":  gin.H{},
+		})
+		return
+	}
+
+	avatarURL := data["url"].(string)
+	userInter, _ := c.Get("user")
+
+	user := userInter.(model.User)
+
+	if err := model.DB.Model(&user).Update("avatar_url", avatarURL).Error; err != nil {
+		c.JSON(http.StatusOK, gin.H{
+			"errNo": model.ErrorCode.ERROR,
+			"msg":   err.Error(),
+			"data":  gin.H{},
+		})
+		return
+	}
+
+	user.AvatarURL = avatarURL
+
+	if model.UserToRedis(user) != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data":  data,
+	})
+}
+
+func Top10(c *gin.Context) {
+	TopN(c, 10)
+}
+
+func Top100(c *gin.Context) {
+	TopN(c, 100)
+
+}
+
+func TopN(c *gin.Context, n int) {
+	sendErrJson := common.SendErrJson
+
+	var users []model.User
+
+	if err := model.DB.Order("score DESC").Limit(n).Find(&users).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"errNo": model.ErrorCode.SUCCESS,
+			"msg":   "success",
+			"data": gin.H{
+				"users": users,
+			},
+		})
+	}
 }

@@ -27,7 +27,15 @@ func Route(router *gin.Engine) {
 
 		api.POST("/reset/sendemail",user.ResetPasswordMail)
 		api.GET("/reset/verify/:id/:secret",user.VerifyResetPasswordLink)
+		api.POST("/reset/password/:id/:secret",user.ResetPassword)
 
+		api.GET("/user/info",middleware.SigninRequired,user.SecretInfo)
+		api.GET("/user/score/top10",user.Top10)
+		api.GET("/user/score/top100",user.Top100)
+		api.GET("/user/info/detail",middleware.SigninRequired,user.InfoDetail)
+		api.GET("/user/info/public/:id",user.PublicInfo)
+
+		api.POST("/user/uploadavatar",middleware.SigninRequired,user.UploadAvatar)
 
 	}
 

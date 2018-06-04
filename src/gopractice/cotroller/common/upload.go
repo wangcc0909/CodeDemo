@@ -12,7 +12,7 @@ import (
 )
 
 //上传文件
-func upload(c *gin.Context) (map[string]interface{}, error) {
+func Upload(c *gin.Context) (map[string]interface{}, error) {
 	file, err := c.FormFile("upFile")
 	if err != nil {
 		fmt.Println(err.Error())
@@ -82,7 +82,7 @@ func upload(c *gin.Context) (map[string]interface{}, error) {
 
 func UploadHandler(c *gin.Context) {
 
-	data, err := upload(c)
+	data, err := Upload(c)
 
 	if err != nil {
 		c.JSON(http.StatusOK, gin.H{
