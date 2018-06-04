@@ -59,15 +59,56 @@ func CreateCrawlSelector(from int) CrawlSelector {
 }
 
 func CreateSourceHTML(from int) string {
-	return ""
+	var htmlArr []string
+	switch from {
+	case model.ArticleFromJianShu:
+		htmlArr = []string{
+			"<div id=\"golang123-content-outter-footer\">",
+			"<blockquote>",
+			"<p>来源: <a href=\"https://www.jianshu.com/\" target=\"_blank\">简书</a><br>",
+			"原文: <a href=\"{articleURL}\" target=\"_blank\">{title}</a></p>",
+			"</blockquote>",
+			"</div>",
+		}
+	case model.ArticleFromZhihu:
+		htmlArr = []string{
+			"<div id=\"golang123-content-outter-footer\">",
+			"<blockquote>",
+			"<p>来源: <a href=\"https://www.zhihu.com\" target=\"_blank\">知乎</a><br>",
+			"原文: <a href=\"{articleURL}\" target=\"_blank\">{title}</a></p>",
+			"</blockquote>",
+			"</div>",
+		}
+	case model.ArticleFromHuXiu:
+		htmlArr = []string{
+			"<div id=\"golang123-content-outter-footer\">",
+			"<blockquote>",
+			"<p>来源: <a href=\"https://www.huxiu.com\" target=\"_blank\">虎嗅</a><br>",
+			"原文: <a href=\"{articleURL}\" target=\"_blank\">{title}</a></p>",
+			"</blockquote>",
+			"</div>",
+		}
+	case model.ArticleFromCustom:
+		htmlArr = []string{
+			"<div id=\"golang123-content-outter-footer\">",
+			"<blockquote>",
+			"<p>来源: <a href=\"{siteURL}\" target=\"_blank\">{siteName}</a><br>",
+			"原文: <a href=\"{articleURL}\" target=\"_blank\">{title}</a></p>",
+			"</blockquote>",
+			"</div>",
+		}
+	case model.ArticleFromNull:
+		htmlArr = []string{}
+	}
+	return strings.Join(htmlArr,"")
 }
 
 func CrawContent(pageUrl string, crawlSelector CrawlSelector,
-	siteInfo map[string]string, isExsit bool) map[string]interface{} {
+	siteInfo map[string]string, isExist bool) map[string]interface{} {
 	var crawlArticle model.CrawlerArticle
 
 	if err := model.DB.Where("url = ?", pageUrl).Find(&crawlArticle).Error; err == nil {
-		if !isExsit {
+		if !isExist {
 			return nil
 		}
 	}
@@ -238,6 +279,7 @@ func CrawlNotSaveContent(c *gin.Context) {
 
 	data := CrawContent(jsonData.URL, crawlSelector, nil, true)
 
+	//返回数据
 	c.JSON(http.StatusOK, gin.H{
 		"errNo": model.ErrorCode.SUCCESS,
 		"msg":   "success",
