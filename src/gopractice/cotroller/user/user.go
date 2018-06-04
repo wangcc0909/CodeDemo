@@ -19,6 +19,7 @@ import (
 	"gopractice/cotroller/mail"
 	"errors"
 	"github.com/gomodule/redigo/redis"
+	"unicode/utf8"
 )
 
 const (
@@ -632,6 +633,109 @@ func UploadAvatar(c *gin.Context) {
 		"msg":   "success",
 		"data":  data,
 	})
+}
+
+//添加职业经历
+func AddCareer(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+
+	var career model.Career
+	if err := c.ShouldBindJSON(&career); err != nil {
+		sendErrJson("参数无效", c)
+		return
+	}
+
+	career.Company = util.AvoidXss(career.Company)
+	career.Company = strings.TrimSpace(career.Company)
+	career.Title = util.AvoidXss(career.Title)
+	career.Title = strings.TrimSpace(career.Title)
+
+	if career.Company == "" {
+		sendErrJson("公司或者组织名称不能为空", c)
+		return
+	}
+
+	if utf8.RuneCountInString(career.Company) > model.MaxCareerCompanyLen {
+		sendErrJson("公司或者组织的名字不能超过"+fmt.Sprintf("%d", model.MaxCareerCompanyLen)+"个字符", c)
+		return
+	}
+
+	if career.Title == "" {
+		sendErrJson("职位不能为空", c)
+		return
+	}
+
+	if utf8.RuneCountInString(career.Title) > model.MaxCareerTitleLen {
+		sendErrJson("职位名字不能超过"+fmt.Sprintf("%d", model.MaxCareerTitleLen)+"个字符", c)
+		return
+	}
+
+	userInter, _ := c.Get("user")
+	user := userInter.(model.User)
+	career.UserID = user.ID
+
+	if err := model.DB.Create(&career).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data":  career,
+	})
+}
+
+//添加教育经历
+func AddSchool(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var school model.School
+
+	if err := c.ShouldBindJSON(&school); err != nil {
+		sendErrJson("参数错误", c)
+		return
+	}
+
+	school.Name = util.AvoidXss(school.Name)
+	school.Name = strings.TrimSpace(school.Name)
+	school.Speciality = util.AvoidXss(school.Speciality)
+	school.Speciality = strings.TrimSpace(school.Speciality)
+
+	if school.Name == "" {
+		sendErrJson("学校名称不能为空", c)
+		return
+	}
+
+	if utf8.RuneCountInString(school.Name) > model.MaxSchoolNameLen {
+		sendErrJson("学校的名称不能超过"+fmt.Sprintf("%d", model.MaxSchoolNameLen)+"个字符", c)
+		return
+	}
+
+	if school.Speciality == "" {
+		sendErrJson("专业名称不能为空", c)
+		return
+	}
+
+	if utf8.RuneCountInString(school.Speciality) > model.MaxSchoolSpecialityLen {
+		sendErrJson("专业的名称不能超过"+fmt.Sprintf("%d", model.MaxSchoolSpecialityLen)+"个字符", c)
+		return
+	}
+
+	userInter, _ := c.Get("user")
+	user := userInter.(model.User)
+	school.UserID = user.ID
+
+	if err := model.DB.Create(&school).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data":  school,
+	})
+
 }
 
 func Top10(c *gin.Context) {

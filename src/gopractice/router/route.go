@@ -36,6 +36,8 @@ func Route(router *gin.Engine) {
 		api.GET("/user/info/public/:id",user.PublicInfo)
 
 		api.POST("/user/uploadavatar",middleware.SigninRequired,user.UploadAvatar)
+		api.POST("/user/career/add",middleware.SigninRequired,user.AddCareer)
+		api.POST("/user/school/add",middleware.SigninRequired,user.AddSchool)
 
 	}
 

@@ -11,3 +11,7 @@ type Career struct {
 	Title    string     `json:"title"` //职位
 	UserID   uint       `json:"userId"`
 }
+
+const MaxCareerCompanyLen = 200
+
+const MaxCareerTitleLen = 200
