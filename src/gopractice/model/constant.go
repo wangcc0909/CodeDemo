@@ -2,11 +2,15 @@ package model
 
 //通用的常量
 const (
+	//无父节点的parent_id
+	NoParent = 0
 	//每页最大的请求数量
 	MaxPageSize = 100
 
 	//每页最小的请求数量
 	MinPageSize = 5
+
+
 )
 
 const (

@@ -8,6 +8,8 @@ import (
 	"gopractice/cotroller/common"
 	"gopractice/cotroller/crawler"
 	"gopractice/cotroller/message"
+	"gopractice/cotroller/category"
+	"gopractice/cotroller/article"
 )
 
 //这里就是接口
@@ -47,6 +49,9 @@ func Route(router *gin.Engine) {
 
 		api.GET("/messages/unread",middleware.SigninRequired,message.UnRead)
 		api.GET("/messages/read/:id",middleware.SigninRequired,message.Read)
+
+		api.GET("/categories",category.List)
+		api.GET("/articles",article.List)
 
 
 	}
