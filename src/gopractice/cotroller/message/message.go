@@ -136,5 +136,26 @@ func UnRead(c *gin.Context) {
 			},
 		})
 	}
+}
 
+func Read(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+
+	id, err := strconv.Atoi(c.Param("id"))
+
+	if err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	if err := model.DB.Model(&model.Message{}).Where("id = ?", id).Update("readed", true).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data":  gin.H{},
+	})
 }
