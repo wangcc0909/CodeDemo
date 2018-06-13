@@ -7,10 +7,16 @@ import (
 )
 
 var msg = make(chan string)
+var isQuite = make(chan bool)
 func HandleServerMsg(conn net.Conn) {
 	buf := make([]byte,1024 * 2)
 	for  {
 		n,err := conn.Read(buf)
+		if n == 0 {
+			isQuite <- true
+			fmt.Println("conn.Read err :",err)
+			return
+		}
 		if err != nil {
 			if err == io.EOF {
 				continue
@@ -41,13 +47,10 @@ func main() {
 		}
 		msg <- in
 	}
-
-
 }
 func SendMsgToServer(conn net.Conn) {
 	for {
 		message := <-msg
-
 		conn.Write([]byte(message))
 	}
 }
