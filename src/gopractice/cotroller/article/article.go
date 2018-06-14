@@ -10,6 +10,8 @@ import (
 	"strings"
 	"net/http"
 	"math"
+	"github.com/jinzhu/gorm"
+	"gopractice/util"
 )
 
 func queryList(c *gin.Context, isBackend bool) {
@@ -242,4 +244,198 @@ func queryList(c *gin.Context, isBackend bool) {
 //文章列表
 func List(c *gin.Context) {
 	queryList(c, false)
+}
+
+//评论最多的文章  返回5条
+func ListMaxComment(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var articles []model.Article
+
+	if err := model.DB.Select("id,name").Where("status = 1 OR status = 2").Order("comment_count DESC").
+		Limit(5).Find(&articles).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"articles": articles,
+		},
+	})
+}
+
+//访问量最多的文章 返回5条
+func ListMaxBrowse(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var articles []model.Article
+
+	if err := model.DB.Select("id,name").Where("status = 1 OR status = 2").Order("browse_count DESC").
+		Limit(5).Find(&articles).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"articles": articles,
+		},
+	})
+}
+
+//所有置顶的文章
+func Tops(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var topArticles []model.TopArticle
+	var articles []model.Article
+
+	if err := model.DB.Order("created_at DESC").Find(&topArticles).Error;err != nil {
+		sendErrJson("error",c)
+		return
+	}
+
+	for i := 0; i < len(topArticles); i++ {
+		var article model.Article
+
+		if err := model.DB.Model(&topArticles[i]).Related(&article,"articles").Error;err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error",c)
+			return 
+		}
+
+		if err := model.DB.Model(&article).Related(&article.Categories,"categories").Error;err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error",c)
+			return
+		}
+
+		if err := model.DB.Model(&article).Related(&article.User,"users").Error;err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error",c)
+			return
+		}
+
+		if article.LastUserID != 0 {
+			if err := model.DB.Model(&article).Related(&article.LastUser, "users", "last_user_id").Error; err != nil {
+				fmt.Println(err.Error(),"articleId:",article.ID,"lastUserId:",article.LastUserID)
+				sendErrJson("error",c)
+				return
+			}
+		}
+		article.Content = ""
+		article.HTMLContent = ""
+		articles = append(articles,article)
+	}
+
+	c.JSON(http.StatusOK,gin.H{
+		"errNo":model.ErrorCode.SUCCESS,
+		"msg":"success",
+		"data":gin.H{
+			"articles":articles,
+		},
+	})
+}
+
+//获取文章信息
+func Info(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+
+	articleID,err := strconv.Atoi(c.Param("id"))
+	if err != nil {
+		sendErrJson("错误的文章ID",c)
+		return
+	}
+
+	var article model.Article
+	if err := model.DB.First(&article,articleID).Error;err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("错误的文章ID",c)
+		return
+	}
+
+	if article.Status == model.ArticleVerifyFail {
+		fmt.Println(err.Error())
+		sendErrJson("错误的文章ID",c)
+		return
+	}
+
+	article.BrowseCount++
+
+	if err := model.DB.Save(&article).Error;err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	if err := model.DB.Model(&article).Related(&article.User, "users").Error; err != nil {
+		sendErrJson("error",c)
+		return
+	}
+
+	if err := model.DB.Model(&article).Related(&article.Categories,"categories").Error;err != nil{
+		sendErrJson("error",c)
+		return
+	}
+
+	if err := model.DB.Model(&article).Where("source_name = ?",model.CommentSourceArticle).
+		Related(&article.Comments,"comments").Error;err != nil {
+		sendErrJson("error",c)
+		return
+	}
+
+	for i := 0; i < len(article.Comments); i++ {
+		if err := model.DB.Model(&article.Comments[i]).Related(&article.Comments[i].User, "users").Error; err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error", c)
+			return
+		}
+		article.Comments[i].HTMLContent = util.MarkdownToHTML(article.Comments[i].Content)
+		parentID := article.Comments[i].ParentID
+		var parents []model.Comment
+		// 只查回复的直接父回复
+		if parentID != 0 {
+			var parent model.Comment
+			var parentExist = true
+			if err := model.DB.Where("id = ?", parentID).Find(&parent).Error; err != nil {
+				parentExist = false
+				if err != gorm.ErrRecordNotFound {
+					fmt.Printf(err.Error())
+					sendErrJson("error", c)
+					return
+				}
+			}
+			if parentExist {
+				if err := model.DB.Model(&parent).Related(&parent.User, "users").Error; err != nil {
+					fmt.Println(err.Error())
+					sendErrJson("error", c)
+					return
+				}
+				parents = append(parents, parent)
+				article.Comments[i].Parents = parents
+			}
+		}
+	}
+
+	if c.Query("f") != "md" {
+		if article.ContentType == model.ContentTypeMarkdown {
+			article.HTMLContent = util.MarkdownToHTML(article.Content)
+		} else if article.ContentType == model.ContentTypeHTML {
+			article.HTMLContent = util.AvoidXss(article.HTMLContent)
+		} else {
+			article.HTMLContent = util.MarkdownToHTML(article.Content)
+		}
+		article.Content = ""
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"article": article,
+		},
+	})
 }

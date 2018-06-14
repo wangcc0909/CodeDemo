@@ -53,6 +53,9 @@ func Route(router *gin.Engine) {
 		api.GET("/categories",category.List)
 		api.GET("/articles",article.List)
 
-
+		api.GET("/articles/max/bycomment",article.ListMaxComment)
+		api.GET("/articles/max/bybrowse",article.ListMaxBrowse)
+		api.GET("/articles/top/global",article.Tops)
+		api.GET("/articles/info/:id",article.Info)
 	}
 }
