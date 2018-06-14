@@ -57,5 +57,6 @@ func Route(router *gin.Engine) {
 		api.GET("/articles/max/bybrowse",article.ListMaxBrowse)
 		api.GET("/articles/top/global",article.Tops)
 		api.GET("/articles/info/:id",article.Info)
+		api.GET("/articles/user/:userID",article.UserArticleList)
 	}
 }

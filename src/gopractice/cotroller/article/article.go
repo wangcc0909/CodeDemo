@@ -241,6 +241,136 @@ func queryList(c *gin.Context, isBackend bool) {
 
 }
 
+func UserArticleList(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+
+	var userID int
+	var userIDErr error
+	var orderType int
+	var orderTypeError error
+	var orderStr string
+	var isDESC int
+	var descErr error
+	var pageNo int
+	var pageSize int
+	var pageSizeErr error
+	var f string
+
+	f = c.Query("f")
+
+	if pn, err := strconv.Atoi(c.Query("pageNo")); err != nil {
+		pn = 1
+	} else {
+		pageNo = pn
+	}
+
+	if pageNo < 1 {
+		pageNo = 1
+	}
+
+	userID, userIDErr = strconv.Atoi(c.Param("userID"))
+	if userIDErr != nil {
+		sendErrJson("无效的用户ID", c)
+		return
+	}
+
+	var user model.User
+
+	if err := model.DB.First(&user, userID).Error; err != nil {
+		sendErrJson("无效的用户ID", c)
+		return
+	}
+
+	if orderType, orderTypeError = strconv.Atoi(c.Param("orderType")); orderTypeError != nil {
+		sendErrJson("无效的orderType", c)
+		return
+	}
+
+	//按日期排序,按点赞排序,按评论排序
+	if orderType != 1 && orderType != 2 && orderType != 3 {
+		sendErrJson("无效的orderType", c)
+		return
+	}
+
+	if isDESC, descErr = strconv.Atoi(c.Query("desc")); descErr != nil {
+		sendErrJson("无效的desc", c)
+		return
+	}
+
+	if isDESC != 0 && isDESC != 1 {
+		sendErrJson("无效的desc", c)
+		return
+	}
+
+	if pageSize, pageSizeErr = strconv.Atoi(c.Query("pageSize")); pageSizeErr != nil {
+		sendErrJson("无效的pageSize", c)
+		return
+	}
+
+	if pageSize < 1 || pageSize > model.MaxPageSize {
+		sendErrJson("无效的pageSize", c)
+		return
+	}
+
+	if orderType == 1 {
+		orderStr = "created_at"
+	} else if orderType == 2 {
+		orderStr = "up_count"
+	} else if orderType == 3 {
+		orderStr = "comment_count"
+	}
+
+	if isDESC == 1 {
+		orderStr += " DESC"
+	} else {
+		orderStr += " ASC"
+	}
+
+	var articles []model.Article
+	if err := model.DB.Where("user_id = ? AND (status = 1 OR status = 2)", userID).Order(orderStr).
+		Offset((pageNo - 1) * pageSize).Limit(pageSize).Find(&articles).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	totalCount := 0
+	if err := model.DB.Where("user_id = ? AND (status = 1 OR status = 2)", userID).Count(&totalCount).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	if f != "md" {
+		for i := 0; i < len(articles); i++ {
+			if err := model.DB.Model(&articles[i]).Related(&articles[i].User, "users").Error; err != nil {
+				fmt.Println(err.Error())
+				sendErrJson("error", c)
+				return
+			}
+
+			if articles[i].ContentType == model.ContentTypeMarkdown {
+				articles[i].HTMLContent = util.MarkdownToHTML(articles[i].Content)
+			} else {
+				articles[i].HTMLContent = util.AvoidXss(articles[i].HTMLContent)
+			}
+			articles[i].Content = ""
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"articles":   articles,
+			"pageNo":     pageNo,
+			"pageSize":   pageSize,
+			"totalPage":  math.Ceil(float64(totalCount) / float64(pageSize)),
+			"totalCount": totalCount,
+		},
+	})
+}
+
 //文章列表
 func List(c *gin.Context) {
 	queryList(c, false)
@@ -294,49 +424,49 @@ func Tops(c *gin.Context) {
 	var topArticles []model.TopArticle
 	var articles []model.Article
 
-	if err := model.DB.Order("created_at DESC").Find(&topArticles).Error;err != nil {
-		sendErrJson("error",c)
+	if err := model.DB.Order("created_at DESC").Find(&topArticles).Error; err != nil {
+		sendErrJson("error", c)
 		return
 	}
 
 	for i := 0; i < len(topArticles); i++ {
 		var article model.Article
 
-		if err := model.DB.Model(&topArticles[i]).Related(&article,"articles").Error;err != nil {
+		if err := model.DB.Model(&topArticles[i]).Related(&article, "articles").Error; err != nil {
 			fmt.Println(err.Error())
-			sendErrJson("error",c)
-			return 
-		}
-
-		if err := model.DB.Model(&article).Related(&article.Categories,"categories").Error;err != nil {
-			fmt.Println(err.Error())
-			sendErrJson("error",c)
+			sendErrJson("error", c)
 			return
 		}
 
-		if err := model.DB.Model(&article).Related(&article.User,"users").Error;err != nil {
+		if err := model.DB.Model(&article).Related(&article.Categories, "categories").Error; err != nil {
 			fmt.Println(err.Error())
-			sendErrJson("error",c)
+			sendErrJson("error", c)
+			return
+		}
+
+		if err := model.DB.Model(&article).Related(&article.User, "users").Error; err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error", c)
 			return
 		}
 
 		if article.LastUserID != 0 {
 			if err := model.DB.Model(&article).Related(&article.LastUser, "users", "last_user_id").Error; err != nil {
-				fmt.Println(err.Error(),"articleId:",article.ID,"lastUserId:",article.LastUserID)
-				sendErrJson("error",c)
+				fmt.Println(err.Error(), "articleId:", article.ID, "lastUserId:", article.LastUserID)
+				sendErrJson("error", c)
 				return
 			}
 		}
 		article.Content = ""
 		article.HTMLContent = ""
-		articles = append(articles,article)
+		articles = append(articles, article)
 	}
 
-	c.JSON(http.StatusOK,gin.H{
-		"errNo":model.ErrorCode.SUCCESS,
-		"msg":"success",
-		"data":gin.H{
-			"articles":articles,
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"articles": articles,
 		},
 	})
 }
@@ -345,45 +475,45 @@ func Tops(c *gin.Context) {
 func Info(c *gin.Context) {
 	sendErrJson := common.SendErrJson
 
-	articleID,err := strconv.Atoi(c.Param("id"))
+	articleID, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
-		sendErrJson("错误的文章ID",c)
+		sendErrJson("错误的文章ID", c)
 		return
 	}
 
 	var article model.Article
-	if err := model.DB.First(&article,articleID).Error;err != nil {
+	if err := model.DB.First(&article, articleID).Error; err != nil {
 		fmt.Println(err.Error())
-		sendErrJson("错误的文章ID",c)
+		sendErrJson("错误的文章ID", c)
 		return
 	}
 
 	if article.Status == model.ArticleVerifyFail {
 		fmt.Println(err.Error())
-		sendErrJson("错误的文章ID",c)
+		sendErrJson("错误的文章ID", c)
 		return
 	}
 
 	article.BrowseCount++
 
-	if err := model.DB.Save(&article).Error;err != nil {
+	if err := model.DB.Save(&article).Error; err != nil {
 		sendErrJson("error", c)
 		return
 	}
 
 	if err := model.DB.Model(&article).Related(&article.User, "users").Error; err != nil {
-		sendErrJson("error",c)
+		sendErrJson("error", c)
 		return
 	}
 
-	if err := model.DB.Model(&article).Related(&article.Categories,"categories").Error;err != nil{
-		sendErrJson("error",c)
+	if err := model.DB.Model(&article).Related(&article.Categories, "categories").Error; err != nil {
+		sendErrJson("error", c)
 		return
 	}
 
-	if err := model.DB.Model(&article).Where("source_name = ?",model.CommentSourceArticle).
-		Related(&article.Comments,"comments").Error;err != nil {
-		sendErrJson("error",c)
+	if err := model.DB.Model(&article).Where("source_name = ?", model.CommentSourceArticle).
+		Related(&article.Comments, "comments").Error; err != nil {
+		sendErrJson("error", c)
 		return
 	}
 
