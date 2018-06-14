@@ -12,6 +12,8 @@ import (
 	"math"
 	"github.com/jinzhu/gorm"
 	"gopractice/util"
+	"github.com/gomodule/redigo/redis"
+	"unicode/utf8"
 )
 
 func queryList(c *gin.Context, isBackend bool) {
@@ -416,6 +418,183 @@ func ListMaxBrowse(c *gin.Context) {
 			"articles": articles,
 		},
 	})
+}
+
+func Create(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	RedisConn := model.RedisPool.Get()
+	defer RedisConn.Close()
+	minuteKey := model.ArticleMinuteLimit + fmt.Sprintf("%d", user.ID)
+	minuteCount, err := redis.Int64(RedisConn.Do("GET", minuteKey))
+	if err != nil && minuteCount > model.ArticleMinuteLimitCount {
+		sendErrJson("您的操作过于频繁,休息会吧", c)
+		return
+	}
+
+	minuteRemainingTime, _ := redis.Int64(RedisConn.Do("TTL", minuteKey))
+	if minuteRemainingTime < 0 || minuteRemainingTime > 60 {
+		minuteRemainingTime = 60
+	}
+
+	if _, err := RedisConn.Do("SET", minuteKey, minuteCount+1, "EX", minuteRemainingTime); err != nil {
+		fmt.Println("redis set fail :", err)
+		sendErrJson("内部错误", c)
+		return
+	}
+
+	dayKey := model.ArticleDayLimit + fmt.Sprintf("%d", user.ID)
+	dayCount, dayErr := redis.Int64(RedisConn.Do("GET", dayKey))
+
+	if dayErr != nil && dayCount > model.ArticleDayLimitCount {
+		sendErrJson("您的操作过于频繁,休息会吧", c)
+		return
+	}
+
+	dayRemainingTime, _ := redis.Int64(RedisConn.Do("TTL", dayKey))
+	secondOfDay := int64(24 * 60 * 60)
+	if dayRemainingTime < 0 || dayRemainingTime > secondOfDay {
+		dayRemainingTime = secondOfDay
+	}
+
+	if _, err := RedisConn.Do("SET", dayKey, dayCount+1, "EX", dayRemainingTime); err != nil {
+		fmt.Println("redis set fail :", err)
+		sendErrJson("内部错误", c)
+		return
+	}
+
+	save(c, false)
+}
+
+func save(c *gin.Context, isEdit bool) {
+	sendErrJson := common.SendErrJson
+	var article model.Article
+
+	if err := c.ShouldBindJSON(&article); err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("参数无效", c)
+		return
+	}
+
+	userInter, _ := c.Get("user")
+	user := userInter.(model.User)
+	var queryArticle model.Article
+	if isEdit {
+		if model.DB.First(&queryArticle, article.ID).Error != nil {
+			sendErrJson("无效的文章id", c)
+			return
+		}
+	} else {
+		article.UserID = user.ID
+	}
+
+	if isEdit {
+		tempArticle := article
+		article = queryArticle
+		article.Name = tempArticle.Name
+
+		if article.ContentType == model.ContentTypeMarkdown {
+			article.HTMLContent = tempArticle.Content
+		} else {
+			article.Content = tempArticle.Content
+		}
+		article.Categories = tempArticle.Categories
+	} else {
+		article.BrowseCount = 0
+		article.Status = model.ArticleVerifying
+		article.ContentType = model.ContentTypeMarkdown
+		user.Score = user.Score + model.ArticleScore
+		user.ArticleCount = user.ArticleCount + 1
+		if model.UserToRedis(user) != nil {
+			sendErrJson("error", c)
+			return
+		}
+	}
+
+	article.Name = util.AvoidXss(article.Name)
+	article.Name = strings.TrimSpace(article.Name)
+
+	article.Content = strings.TrimSpace(article.Content)
+	article.HTMLContent = strings.TrimSpace(article.HTMLContent)
+
+	if article.HTMLContent != "" {
+		article.HTMLContent = util.AvoidXss(article.HTMLContent)
+	}
+
+	if article.Name == "" {
+		sendErrJson("文章名称不能为空", c)
+		return
+	}
+
+	if utf8.RuneCountInString(article.Name) > model.MaxNameLen {
+		sendErrJson("文章名称不能超过"+strconv.Itoa(model.MaxNameLen)+"个字符", c)
+		return
+	}
+
+	var theContent string
+
+	if article.ContentType == model.ContentTypeHTML {
+		theContent = article.HTMLContent
+	} else {
+		theContent = article.Content
+	}
+
+	if theContent == "" || utf8.RuneCountInString(theContent) <= 0 {
+		sendErrJson("文章内容不能为空", c)
+		return
+	}
+
+	if utf8.RuneCountInString(theContent) > model.MaxContentLen {
+		sendErrJson("文章内容不能超过"+strconv.Itoa(model.MaxContentLen)+"个字符", c)
+		return
+	}
+
+	if article.Categories == nil || len(article.Categories) <= 0 {
+		sendErrJson("请选择版块", c)
+		return
+	}
+
+	for i := 0; i < len(article.Categories); i++ {
+		var category model.Category
+		if err := model.DB.First(&category, article.Categories[i].ID).Error; err != nil {
+			sendErrJson("无效的版块ID", c)
+			return
+		}
+
+		article.Categories[i] = category
+	}
+
+	var saveErr error
+
+	if isEdit {
+		var sql = "DELETE FROM article_category WHERE article_id = ?"
+		saveErr = model.DB.Exec(sql, article.ID).Error
+
+		if saveErr == nil {
+			// 发表文章后，用户的积分、文章数会增加，如果保存失败了，不作处理
+			if userErr := model.DB.Model(&user).Update(map[string]interface{}{
+				"article_count": user.ArticleCount,
+				"score":         user.Score,
+			}).Error; userErr != nil {
+				fmt.Println(userErr.Error())
+			}
+		}
+	}
+
+	if saveErr != nil {
+		fmt.Println(saveErr.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data":  article,
+	})
+
 }
 
 //所有置顶的文章

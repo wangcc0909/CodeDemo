@@ -58,5 +58,7 @@ func Route(router *gin.Engine) {
 		api.GET("/articles/top/global",article.Tops)
 		api.GET("/articles/info/:id",article.Info)
 		api.GET("/articles/user/:userID",article.UserArticleList)
+
+		api.POST("/articles/create",middleware.SigninRequired,article.Create)
 	}
 }
