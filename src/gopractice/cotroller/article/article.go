@@ -597,6 +597,10 @@ func save(c *gin.Context, isEdit bool) {
 
 }
 
+func Update(c *gin.Context) {
+	save(c, true)
+}
+
 //所有置顶的文章
 func Tops(c *gin.Context) {
 	sendErrJson := common.SendErrJson
@@ -647,6 +651,51 @@ func Tops(c *gin.Context) {
 		"data": gin.H{
 			"articles": articles,
 		},
+	})
+}
+
+//文章置顶
+func Top(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+
+	var id int
+	var idErr error
+	if id, idErr = strconv.Atoi(c.Param("id")); idErr != nil {
+		sendErrJson("id错误", c)
+		return
+	}
+
+	var theArticle model.Article
+	if err := model.DB.First(&theArticle, id).Error; err != nil {
+		sendErrJson("无效的文章ID", c)
+		return
+	}
+
+	var count int
+	if err := model.DB.Model(&model.TopArticle{}).Count(&count).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	if count > model.MaxTopArticleCount {
+		sendErrJson("最多只能"+strconv.Itoa(model.MaxTopArticleCount)+"篇文章置顶", c)
+		return
+	}
+
+	topArticle := model.TopArticle{
+		ArticleID: theArticle.ID,
+	}
+
+	if err := model.DB.Save(&topArticle).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data":  topArticle,
 	})
 }
 
@@ -745,6 +794,66 @@ func Info(c *gin.Context) {
 		"msg":   "success",
 		"data": gin.H{
 			"article": article,
+		},
+	})
+}
+
+func Delete(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	// 删除文章，其他用户对文章的评论保留
+	// 其他用户对文章的点赞也保留
+	var id int
+	var idErr error
+	if id, idErr = strconv.Atoi(c.Param("id")); idErr != nil {
+		sendErrJson("文章id错误", c)
+		return
+	}
+
+	var article model.Article
+
+	if err := model.DB.First(&article, id).Error; err != nil {
+		sendErrJson("无效ID", c)
+		return
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	if user.ID != article.UserID {
+		sendErrJson("没有权限执行此操作", c)
+		return
+	}
+
+	tx := model.DB.Begin()
+
+	if err := tx.Delete(&article).Error; err != nil {
+		sendErrJson("error", c)
+		tx.Rollback()
+		return
+	}
+
+	if err := tx.Model(&user).Updates(map[string]interface{}{
+		"article_count": user.ArticleCount - 1,
+		"score":         user.Score - model.ArticleScore,
+	}).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		tx.Rollback()
+		return
+	}
+
+	if model.UserToRedis(user) != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	tx.Commit()
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"id": id,
 		},
 	})
 }

@@ -44,21 +44,25 @@ func Route(router *gin.Engine) {
 		api.PUT("/user/update/:filed", middleware.SigninRequired, user.UpdateInfo)
 		api.PUT("/user/password/update", middleware.SigninRequired, user.UpdatePassword)
 
-		api.DELETE("/user/career/delete/:id",middleware.SigninRequired,user.DeleteCareer)
-		api.DELETE("/user/school/delete/:id",middleware.SigninRequired,user.DeleteSchool)
+		api.DELETE("/user/career/delete/:id", middleware.SigninRequired, user.DeleteCareer)
+		api.DELETE("/user/school/delete/:id", middleware.SigninRequired, user.DeleteSchool)
 
-		api.GET("/messages/unread",middleware.SigninRequired,message.UnRead)
-		api.GET("/messages/read/:id",middleware.SigninRequired,message.Read)
+		api.GET("/messages/unread", middleware.SigninRequired, message.UnRead)
+		api.GET("/messages/read/:id", middleware.SigninRequired, message.Read)
 
-		api.GET("/categories",category.List)
-		api.GET("/articles",article.List)
+		api.GET("/categories", category.List)
+		api.GET("/articles", article.List)
 
-		api.GET("/articles/max/bycomment",article.ListMaxComment)
-		api.GET("/articles/max/bybrowse",article.ListMaxBrowse)
-		api.GET("/articles/top/global",article.Tops)
-		api.GET("/articles/info/:id",article.Info)
-		api.GET("/articles/user/:userID",article.UserArticleList)
+		api.GET("/articles/max/bycomment", article.ListMaxComment)
+		api.GET("/articles/max/bybrowse", article.ListMaxBrowse)
+		api.GET("/articles/top/global", article.Tops)
+		api.GET("/articles/info/:id", article.Info)
+		api.GET("/articles/user/:userID", article.UserArticleList)
 
-		api.POST("/articles/create",middleware.SigninRequired,article.Create)
+		api.POST("/articles/create", middleware.SigninRequired, article.Create)
+		api.POST("/articles/top/:id", middleware.EditorRequired, article.Top)
+
+		api.PUT("/articles/update", middleware.SigninRequired, article.Update)
+		api.DELETE("/articles/delete/:id", middleware.SigninRequired, article.Delete)
 	}
 }
