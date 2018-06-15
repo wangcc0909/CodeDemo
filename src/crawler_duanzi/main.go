@@ -54,7 +54,7 @@ func CrawlerOne(url string) (title, content string, err error) {
 		title = strings.Replace(title, "\t", "", -1)
 	}
 
-	reg2 := regexp.MustCompile(`<div class="content-txt pt10">([^<]+)<a id="prev" href="`)
+	reg2 := regexp.MustCompile(`<div class="content-txt pt10">([\s\S]*)<a id="prev" href="`)
 	temp2 := reg2.FindAllStringSubmatch(result, -1)
 	for _, tempContent := range temp2 {
 
@@ -62,6 +62,7 @@ func CrawlerOne(url string) (title, content string, err error) {
 		content = strings.Replace(content,"\t","",-1)
 		content = strings.Replace(content,"\r","",-1)
 		content = strings.Replace(content,"\n","",-1)
+		content = strings.Replace(content,"<br />","",-1)
 	}
 	return title, content, nil
 }
@@ -93,9 +94,9 @@ func CrawlerPage(i int, page chan int) {
 			continue
 		}
 
-		file.Write([]byte(title+ "\n"))
-		file.Write([]byte(joyContent + "\n"))
-		file.Write([]byte("================================\n"))
+		file.Write([]byte(title+ "\r\n"))
+		file.Write([]byte(joyContent + "\r\n"))
+		file.Write([]byte("================================\r\n"))
 	}
 
 	page <- i
@@ -121,6 +122,10 @@ func main() {
 
 	fmt.Println("请输入结束页面( >= 开始页面)")
 	fmt.Scan(&end)
+
+	if start > end {
+		fmt.Println("输入错误,开始页务必小于结束页")
+	}
 
 	DoWork(start, end)
 }
