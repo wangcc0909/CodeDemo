@@ -64,5 +64,6 @@ func Route(router *gin.Engine) {
 
 		api.PUT("/articles/update", middleware.SigninRequired, article.Update)
 		api.DELETE("/articles/delete/:id", middleware.SigninRequired, article.Delete)
+		api.DELETE("/articles/deletetop/:id",middleware.EditorRequired,article.DeleteTop)
 	}
 }

@@ -798,6 +798,37 @@ func Info(c *gin.Context) {
 	})
 }
 
+func DeleteTop(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var id int
+	var idErr error
+	if id, idErr = strconv.Atoi(c.Param("id")); idErr != nil {
+		sendErrJson("文章id错误", c)
+		return
+	}
+	
+	var topArticle model.TopArticle
+
+	if err := model.DB.Where("article_id = ?",id).Find(&topArticle).Error;err != nil {
+		sendErrJson("无效的文章ID",c)
+		return
+	}
+
+	if model.DB.Delete(&topArticle).Error != nil {
+		sendErrJson("error",c)
+		return
+	}
+
+	c.JSON(http.StatusOK,gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"id": id,
+		},
+	})
+
+}
+
 func Delete(c *gin.Context) {
 	sendErrJson := common.SendErrJson
 	// 删除文章，其他用户对文章的评论保留
