@@ -25,6 +25,7 @@ func main() {
 			os.Exit(-1)
 		}
 
+		//将打印信息写入到文件中   默认是输出到屏幕
 		gin.DefaultWriter = io.MultiWriter(file)
 	}
 
@@ -34,6 +35,7 @@ func main() {
 
 	app.MaxMultipartMemory = maxSize << 20
 
+	//使用中间件
 	app.Use(gin.Logger())
 
 	app.Use(gin.Recovery())

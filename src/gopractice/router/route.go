@@ -17,12 +17,12 @@ import (
 func Route(router *gin.Engine) {
 	apiPrefix := config.ServerConfig.APIPrefix
 
-	api := router.Group(apiPrefix, middleware.RefreshTokenCookie)
+	api := router.Group(apiPrefix, middleware.RefreshTokenCookie)//这个是群组中间件
 	{
 		api.GET("/siteinfo", common.SiteInfo)
 		api.POST("/login", user.Signin)
 		api.POST("/signup", user.Signup)
-		api.POST("/signout", middleware.SigninRequired, user.Signout)
+		api.POST("/signout", middleware.SigninRequired, user.Signout)//单个中间件
 		api.POST("/upload", middleware.SigninRequired, common.UploadHandler)
 		api.POST("crawlnotsavecontent", middleware.EditorRequired, crawler.CrawlNotSaveContent)
 		api.POST("/active/sendmail", user.ActiveSendMail)

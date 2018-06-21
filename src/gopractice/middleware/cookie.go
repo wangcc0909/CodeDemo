@@ -21,5 +21,4 @@ func RefreshTokenCookie(c *gin.Context) {
 	}
 
 	c.Next()
-
 }
