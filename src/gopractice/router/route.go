@@ -68,5 +68,6 @@ func Route(router *gin.Engine) {
 		api.DELETE("/articles/deletetop/:id",middleware.EditorRequired,article.DeleteTop)
 
 		api.GET("/collects",collect.Collects)
+		api.GET("/collects/folders/withsource",middleware.SigninRequired,collect.FoldersWithSource)
 	}
 }

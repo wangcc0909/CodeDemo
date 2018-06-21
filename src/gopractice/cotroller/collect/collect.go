@@ -137,3 +137,68 @@ func Collects(c *gin.Context) {
 	})
 
 }
+
+func queryFolders(userId int) ([]model.Folder, error) {
+	var user model.User
+	if err := model.DB.First(&user,userId).Error;err != nil{
+		return nil,err
+	}
+
+	var folders []model.Folder
+	if err := model.DB.Where("user_id = ?",userId).Order(&folders).Error;err != nil {
+		return nil, err
+	}
+
+	return folders,nil
+}
+
+func FoldersWithSource(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	iUser, isExist := c.Get("user")
+
+	if !isExist {
+		c.JSON(http.StatusOK, gin.H{
+			"errNo": model.ErrorCode.SUCCESS,
+			"msg":   "success",
+			"data": gin.H{
+				"folders": make([]interface{}, 0),
+			},
+		})
+		return
+	}
+
+	user := iUser.(model.User)
+	var folders []model.Folder
+	var queryFloderErr error
+
+	if folders, queryFloderErr = queryFolders(int(user.ID)); queryFloderErr != nil {
+		fmt.Println(queryFloderErr.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	var results []interface{}
+
+	for i := 0; i < len(folders); i++ {
+		var collects []model.Collect
+		if err := model.DB.Where("folder_id = ?", folders[i].ID).Find(&collects).Error; err != nil {
+			if err != gorm.ErrRecordNotFound {
+				sendErrJson("error", c)
+				return
+			}
+		}
+		results = append(results, gin.H{
+			"id":       folders[i].ID,
+			"name":     folders[i].Name,
+			"collects": collects,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"folders": results,
+		},
+	})
+}
