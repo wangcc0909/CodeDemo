@@ -2,6 +2,7 @@ package model
 
 import "time"
 
+//收藏夹 相当于分类
 type Folder struct {
 	ID        uint       `gorm:"primary_key" json:"id"`
 	CreatedAt time.Time  `json:"createdAt"`

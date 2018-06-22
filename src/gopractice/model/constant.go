@@ -22,6 +22,9 @@ const (
 const (
 	//ArticleScore  创建话题时增加的积分 5分
 	ArticleScore = 5
+
+	//ByCollectScore 话题或投票被收藏时增加的积分
+	ByCollectScore = 2
 )
 
 const (

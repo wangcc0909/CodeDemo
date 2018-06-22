@@ -11,6 +11,142 @@ import (
 	"net/http"
 )
 
+//收藏文章或收藏投票
+func CreateCollect(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+
+	var article model.Article
+	var collect model.Collect
+	var vote model.Vote
+
+	if err := c.ShouldBindJSON(&collect); err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("参数无效", c)
+		return
+	}
+
+	if collect.SourceName != model.CollectSourceArticle && collect.SourceName != model.CollectSourceVote {
+		sendErrJson("sourceName无效", c)
+		return
+	}
+
+	if collect.SourceName == model.CollectSourceArticle {
+		if err := model.DB.First(&article, collect.SourceID).Error; err != nil {
+			sendErrJson("sourceID无效", c)
+			return
+		}
+	}
+
+	if collect.SourceName == model.CollectSourceVote {
+		if err := model.DB.First(&vote, collect.SourceID).Error; err != nil {
+			sendErrJson("sourceID无效", c)
+			return
+		}
+	}
+
+	if err := model.DB.First(&collect.Folder, collect.FolderID).Error; err != nil {
+		sendErrJson("FolderID无效", c)
+		return
+	}
+
+	var theCollect model.Collect
+	if err := model.DB.Where("source_id = ? AND source_name = ?", collect.SourceID, collect.SourceName).
+		First(&theCollect).Error; err != nil {
+		sendErrJson("之前已经收藏过", c)
+		return
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+	collect.UserID = user.ID
+
+	//开始一个事务
+	tx := model.DB.Begin()
+
+	if err := tx.Save(&collect).Error; err != nil {
+		fmt.Println(err.Error())
+		//回滚事务
+		tx.Rollback()
+		sendErrJson("error", c)
+		return
+	}
+
+	if err := tx.Model(&user).Update("collect_count", user.CollectCount+1).Error; err != nil {
+		fmt.Println(err.Error())
+		//回滚事务
+		tx.Rollback()
+		sendErrJson("error", c)
+		return
+	}
+
+	if model.UserToRedis(user) != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	if collect.SourceName == model.CollectSourceArticle {
+		if err := tx.Model(&article).Update("collect_count", article.CollectCount+1).Error; err != nil {
+			fmt.Println(err.Error())
+			//回滚事务
+			tx.Rollback()
+			sendErrJson("error", c)
+			return
+		}
+
+		//获取相关的user
+		if err := tx.Model(&article).Related(&article.User).Error; err != nil {
+			tx.Rollback()
+			sendErrJson("error", c)
+			return
+		}
+
+		//自己收藏自己的话题不增加积分
+		if article.User.ID != user.ID {
+			if err := tx.Model(&article.User).Update("score", article.User.Score+model.ByCollectScore).Error; err != nil {
+				fmt.Println(err.Error())
+				sendErrJson("err", c)
+				tx.Rollback()
+				return
+			}
+		}
+	}
+
+	if collect.SourceName == model.CollectSourceVote {
+		if err := tx.Model(&vote).Update("collect_count", vote.CollectCount+1).Error; err != nil {
+			fmt.Println(err.Error())
+			//回滚事务
+			tx.Rollback()
+			sendErrJson("error", c)
+			return
+		}
+
+		//获取相关的user
+		if err := tx.Model(&vote).Related(&vote.User).Error; err != nil {
+			tx.Rollback()
+			sendErrJson("error", c)
+			return
+		}
+
+		//自己收藏自己的话题不增加积分
+		if vote.User.ID != user.ID {
+			if err := tx.Model(&vote.User).Update("score", vote.User.Score+model.ByCollectScore).Error; err != nil {
+				fmt.Println(err.Error())
+				sendErrJson("err", c)
+				tx.Rollback()
+				return
+			}
+		}
+	}
+
+	tx.Commit()
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data":  collect,
+	})
+}
+
 // Collects 根据收藏夹查询用户已收藏的话题或投票
 func Collects(c *gin.Context) {
 	sendErrJson := common.SendErrJson

@@ -70,5 +70,6 @@ func Route(router *gin.Engine) {
 		api.GET("/collects",collect.Collects)
 		api.GET("/collects/folders/withsource",middleware.SigninRequired,collect.FoldersWithSource)
 		api.GET("/collects/user/:userID/folders",collect.Folders)
+		api.POST("/collects/create",middleware.SigninRequired,collect.CreateCollect)
 	}
 }
