@@ -4,7 +4,7 @@ import "time"
 
 type Article struct {
 	ID            uint       `gorm:"primary_key" json:"id"`
-	CreateAt      time.Time  `json:"createAt"`
+	CreatedAt     time.Time  `json:"createdAt"`
 	UpdateAt      time.Time  `json:"updateAt"`
 	DeleteAt      *time.Time `sql:"index" json:"deleteAt"`
 	Name          string     `json:"name"`
@@ -40,7 +40,7 @@ const MaxTopArticleCount = 4
 
 type TopArticle struct {
 	ID        uint       `gorm:"primary_key" json:"id"`
-	CreateAt  time.Time  `json:"createAt"`
+	CreatedAt time.Time  `json:"createdAt"`
 	UpdateAt  time.Time  `json:"updateAt"`
 	DeleteAt  *time.Time `json:"deleteAt"`
 	ArticleID uint       `json:"articleId"`

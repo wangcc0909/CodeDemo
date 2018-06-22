@@ -5,7 +5,7 @@ import "time"
 //评论
 type Comment struct {
 	ID          uint       `gorm:"primary_key" json:"id"`
-	CreateAt    time.Time  `json:"createAt"`
+	CreatedAt   time.Time  `json:"createdAt"`
 	UpdateAt    time.Time  `json:"updateAt"`
 	DeleteAt    *time.Time `sql:"index" json:"deleteAt"`
 	Status      int        `json:"status"`

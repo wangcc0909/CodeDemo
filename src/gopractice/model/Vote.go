@@ -4,7 +4,7 @@ import "time"
 
 type Vote struct {
 	ID            uint       `gorm:"primary_key" json:"id"`
-	CreateAt      time.Time  `json:"createAt"`
+	CreatedAt     time.Time  `json:"createdAt"`
 	UpdateAt      time.Time  `json:"updateAt"`
 	DeleteAt      *time.Time `sql:"index" json:"deleteAt"`
 	EndAt         time.Time  `json:"endAt"`
@@ -26,19 +26,19 @@ type Vote struct {
 }
 
 type VoteItem struct {
-	ID       uint       `gorm:"primary_key" json:"id"`
-	CreateAt time.Time  `json:"createAt"`
-	UpdateAt time.Time  `json:"updateAt"`
-	DeleteAt *time.Time `sql:"index" json:"deleteAt"`
-	Name     string     `json:"name"`
-	Count    int        `json:"count"`
-	VoteID   uint       `json:"voteId"`
+	ID        uint       `gorm:"primary_key" json:"id"`
+	CreatedAt time.Time  `json:"createdAt"`
+	UpdateAt  time.Time  `json:"updateAt"`
+	DeleteAt  *time.Time `sql:"index" json:"deleteAt"`
+	Name      string     `json:"name"`
+	Count     int        `json:"count"`
+	VoteID    uint       `json:"voteId"`
 }
 
 //用户对那个投票项进行了投票
 type UserVote struct {
 	ID         uint       `gorm:"primary_key" json:"id"`
-	CreateAt   time.Time  `json:"createAt"`
+	CreatedAt  time.Time  `json:"createdAt"`
 	UpdateAt   time.Time  `json:"updateAt"`
 	DeleteAt   *time.Time `sql:"index" json:"deleteAt"`
 	User       User       `json:"user"`

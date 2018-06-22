@@ -9,9 +9,11 @@ import (
 	"io"
 	"gopractice/middleware"
 	"gopractice/router"
-	"gopractice/cron"
 )
 
+/**
+gin 中参数 使用param是将参数放在url中 例如:/user/:id   使用Query是将参数用?隔开 用键值对的形式传递 例如:  ?username=bob&password=123456
+ */
 func main() {
 	fmt.Println("gin version :",gin.Version)
 

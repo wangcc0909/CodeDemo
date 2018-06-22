@@ -138,20 +138,69 @@ func Collects(c *gin.Context) {
 
 }
 
-func queryFolders(userId int) ([]model.Folder, error) {
-	var user model.User
-	if err := model.DB.First(&user,userId).Error;err != nil{
-		return nil,err
+//查询用户的收藏夹列表
+func Folders(c *gin.Context) {
+	senErrJson := common.SendErrJson
+	userID, userIDErr := strconv.Atoi(c.Param("userID"))
+	if userIDErr != nil {
+		senErrJson("无效的userID", c)
+		return
 	}
 
 	var folders []model.Folder
-	if err := model.DB.Where("user_id = ?",userId).Order(&folders).Error;err != nil {
+	var foldersErr error
+	if folders, foldersErr = queryFolders(userID); foldersErr != nil {
+		senErrJson("无效的userID", c)
+		return
+	}
+
+	var results []map[string]interface{}
+	for i := 0; i < len(folders); i++ {
+		var data = map[string]interface{}{
+			"id":        folders[i].ID,
+			"createdAt": folders[i].CreatedAt,
+			"updateAt":  folders[i].UpdateAt,
+			"deleteAt":  folders[i].DeleteAt,
+			"name":      folders[i].Name,
+			"userID":    folders[i].UserID,
+			"parentID":  folders[i].ParentID,
+		}
+
+		var collectCount uint
+		if err := model.DB.Model(&model.Collect{}).Where("folder_id = ?", folders[i].ID).Count(&collectCount).Error; err != nil {
+			senErrJson("error", c)
+			return
+		}
+
+		data["collectCount"] = collectCount
+		results = append(results, data)
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"folders": results,
+		},
+	})
+
+}
+
+func queryFolders(userId int) ([]model.Folder, error) {
+	var user model.User
+	if err := model.DB.First(&user, userId).Error; err != nil {
 		return nil, err
 	}
 
-	return folders,nil
+	var folders []model.Folder
+	if err := model.DB.Where("user_id = ?", userId).Order(&folders).Error; err != nil {
+		return nil, err
+	}
+
+	return folders, nil
 }
 
+// FoldersWithSource 查询用户的收藏夹列表，并且返回每个收藏夹中收藏了哪些话题或投票
 func FoldersWithSource(c *gin.Context) {
 	sendErrJson := common.SendErrJson
 	iUser, isExist := c.Get("user")
