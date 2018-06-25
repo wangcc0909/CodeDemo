@@ -72,6 +72,7 @@ func Route(router *gin.Engine) {
 		api.GET("/collects/user/:userID/folders", collect.Folders)
 		api.POST("/collects/create", middleware.SigninRequired, collect.CreateCollect)
 		api.POST("/collects/folder/create", middleware.SigninRequired, collect.CreateFolder)
+		api.DELETE("/collects/delete/:id",middleware.SigninRequired,collect.DeleteCollect)
 
 	}
 }

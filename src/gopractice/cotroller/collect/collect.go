@@ -341,6 +341,88 @@ func CreateFolder(c *gin.Context) {
 	})
 }
 
+//删除收藏
+func DeleteCollect(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var collect model.Collect
+
+	collectID, collectErr := strconv.Atoi(c.Param("id"))
+	if collectErr != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	if err := model.DB.First(&collect, collectID).Error; err != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	if err := model.DB.Delete(&collect).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	tx := model.DB.Begin()
+
+	if err := tx.Model(&user).Update("collect_count", user.CollectCount-1).Error; err != nil {
+		fmt.Println(err.Error())
+		tx.Rollback()
+		sendErrJson("error", c)
+		return
+	}
+
+	if model.UserToRedis(user) != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	//删除收藏 积分保持不变
+	if collect.SourceName == model.CollectSourceArticle {
+		var article model.Article
+		if err := tx.First(&article, collect.SourceID).Error; err != nil {
+			tx.Rollback() //别忘了这个方法
+			sendErrJson("error", c)
+			return
+		}
+
+		if err := tx.Model(&article).Update("collect_count", article.CollectCount-1).Error; err != nil {
+			fmt.Println(err.Error())
+			tx.Rollback()
+			sendErrJson("error", c)
+			return
+		}
+	}
+
+	if collect.SourceName == model.CollectSourceVote {
+		var vote model.Vote
+		if err := tx.First(&vote, collect.SourceID).Error; err != nil {
+			tx.Rollback() //别忘了这个方法
+			sendErrJson("error", c)
+			return
+		}
+
+		if err := tx.Model(&vote).Update("collect_count", vote.CollectCount-1).Error; err != nil {
+			fmt.Println(err.Error())
+			tx.Rollback()
+			sendErrJson("error", c)
+			return
+		}
+	}
+	tx.Commit()
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"id": collect.ID,
+		},
+	})
+
+}
+
 //查询用户的收藏夹列表
 func Folders(c *gin.Context) {
 	senErrJson := common.SendErrJson
