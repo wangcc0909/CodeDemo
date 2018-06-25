@@ -17,12 +17,12 @@ import (
 func Route(router *gin.Engine) {
 	apiPrefix := config.ServerConfig.APIPrefix
 
-	api := router.Group(apiPrefix, middleware.RefreshTokenCookie)//这个是群组中间件
+	api := router.Group(apiPrefix, middleware.RefreshTokenCookie) //这个是群组中间件
 	{
 		api.GET("/siteinfo", common.SiteInfo)
 		api.POST("/login", user.Signin)
 		api.POST("/signup", user.Signup)
-		api.POST("/signout", middleware.SigninRequired, user.Signout)//单个中间件
+		api.POST("/signout", middleware.SigninRequired, user.Signout) //单个中间件
 		api.POST("/upload", middleware.SigninRequired, common.UploadHandler)
 		api.POST("crawlnotsavecontent", middleware.EditorRequired, crawler.CrawlNotSaveContent)
 		api.POST("/active/sendmail", user.ActiveSendMail)
@@ -65,11 +65,13 @@ func Route(router *gin.Engine) {
 
 		api.PUT("/articles/update", middleware.SigninRequired, article.Update)
 		api.DELETE("/articles/delete/:id", middleware.SigninRequired, article.Delete)
-		api.DELETE("/articles/deletetop/:id",middleware.EditorRequired,article.DeleteTop)
+		api.DELETE("/articles/deletetop/:id", middleware.EditorRequired, article.DeleteTop)
 
-		api.GET("/collects",collect.Collects)
-		api.GET("/collects/folders/withsource",middleware.SigninRequired,collect.FoldersWithSource)
-		api.GET("/collects/user/:userID/folders",collect.Folders)
-		api.POST("/collects/create",middleware.SigninRequired,collect.CreateCollect)
+		api.GET("/collects", collect.Collects)
+		api.GET("/collects/folders/withsource", middleware.SigninRequired, collect.FoldersWithSource)
+		api.GET("/collects/user/:userID/folders", collect.Folders)
+		api.POST("/collects/create", middleware.SigninRequired, collect.CreateCollect)
+		api.POST("/collects/folder/create", middleware.SigninRequired, collect.CreateFolder)
+
 	}
 }

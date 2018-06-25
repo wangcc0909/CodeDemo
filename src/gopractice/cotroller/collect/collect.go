@@ -9,6 +9,9 @@ import (
 	"github.com/jinzhu/gorm"
 	"gopractice/util"
 	"net/http"
+	"strings"
+	"github.com/microcosm-cc/bluemonday"
+	"unicode/utf8"
 )
 
 //收藏文章或收藏投票
@@ -272,6 +275,70 @@ func Collects(c *gin.Context) {
 		},
 	})
 
+}
+
+//创建收藏夹
+func CreateFolder(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var folder model.Folder
+
+	if c.ShouldBindJSON(&folder) != nil {
+		sendErrJson("参数无效", c)
+		return
+	}
+
+	folder.Name = strings.TrimSpace(folder.Name)
+	folder.Name = bluemonday.UGCPolicy().Sanitize(folder.Name)
+
+	if folder.Name == "" {
+		sendErrJson("收藏夹名字不能为空", c)
+		return
+	}
+
+	if utf8.RuneCountInString(folder.Name) > model.MaxNameLen {
+		sendErrJson("收藏夹的名字不能超过"+strconv.Itoa(model.MaxNameLen)+"个字符", c)
+		return
+	}
+
+	if folder.ParentID != model.NoParent {
+		var parentFolder model.Folder
+
+		if err := model.DB.First(&parentFolder, folder.ParentID).Error; err != nil {
+			sendErrJson("无效的parentID", c)
+			return
+		}
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	var folders []model.Folder
+	var folderErr error
+	if folders, folderErr = queryFolders(int(user.ID)); folderErr != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	if len(folders) > model.MaxFolderCount {
+		msg := "最多只能创建" + fmt.Sprintf("%d", model.MaxFolderCount) + "个收藏夹"
+		sendErrJson(msg, c)
+		return
+	}
+
+	if err := model.DB.Create(&folder).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"id":      folder.ID,
+			"name":    folder.Name,
+			"collect": nil,
+		},
+	})
 }
 
 //查询用户的收藏夹列表
