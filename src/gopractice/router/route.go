@@ -11,6 +11,7 @@ import (
 	"gopractice/cotroller/category"
 	"gopractice/cotroller/article"
 	"gopractice/cotroller/collect"
+	"gopractice/cotroller/comment"
 )
 
 //这里就是接口
@@ -74,6 +75,7 @@ func Route(router *gin.Engine) {
 		api.POST("/collects/folder/create", middleware.SigninRequired, collect.CreateFolder)
 		api.DELETE("/collects/delete/:id",middleware.SigninRequired,collect.DeleteCollect)
 
-
+		api.GET("/comments/user/:userID",comment.UserCommentList)
+		api.GET("/comments/source/:sourceName/:sourceID",comment.SourceComments)
 	}
 }
