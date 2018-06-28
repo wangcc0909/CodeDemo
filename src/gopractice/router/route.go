@@ -74,5 +74,6 @@ func Route(router *gin.Engine) {
 		api.POST("/collects/folder/create", middleware.SigninRequired, collect.CreateFolder)
 		api.DELETE("/collects/delete/:id",middleware.SigninRequired,collect.DeleteCollect)
 
+
 	}
 }

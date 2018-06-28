@@ -37,15 +37,15 @@ func queryList(c *gin.Context, isBackend bool) {
 	offset := (pageNo - 1) * pageSize
 
 	if startAt, err := strconv.Atoi(c.Query("startAt")); err != nil {
-		startTime = time.Unix(0, 0).Format("2006-01-02 17:26:35")
+		startTime = time.Unix(0, 0).Format("2006-01-02 15:04:05")
 	} else {
-		startTime = time.Unix(int64(startAt/1000), 0).Format("2006-01-02 17:26:35")
+		startTime = time.Unix(int64(startAt/1000), 0).Format("2006-01-02 15:04:05")
 	}
 
 	if endAt, err := strconv.Atoi(c.Query("endAt")); err != nil {
 		endTime = time.Now().Format("2006-01-02 17:26:35")
 	} else {
-		endTime = time.Unix(int64(endAt/1000), 0).Format("2006-01-02 17:26:35")
+		endTime = time.Unix(int64(endAt/1000), 0).Format("2006-01-02 15:04:05")
 	}
 
 	//默认按创建时间降序
