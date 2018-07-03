@@ -78,5 +78,9 @@ func Route(router *gin.Engine) {
 		api.GET("/comments/user/:userID",comment.UserCommentList)
 		api.GET("/comments/source/:sourceName/:sourceID",comment.SourceComments)
 		api.POST("/comments/create",middleware.SigninRequired,comment.Create)
+		api.PUT("/comments/update",middleware.SigninRequired,comment.Update)
+		api.DELETE("/comments/delete/:id",middleware.SigninRequired,comment.Delete)
+
+
 	}
 }

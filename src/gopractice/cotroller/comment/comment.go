@@ -312,6 +312,10 @@ func Create(c *gin.Context) {
 	Save(c, false)
 }
 
+func Update(c *gin.Context) {
+	Save(c, true)
+}
+
 //保存评论
 /**
 先更新用户的信息再更新文章的信息
@@ -536,6 +540,115 @@ func Save(c *gin.Context, isEdit bool) {
 		"msg":   "success",
 		"data": gin.H{
 			"comment": commentJson,
+		},
+	})
+}
+
+func Delete(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+
+	id, idErr := strconv.Atoi(c.Param("id"))
+	if idErr != nil {
+		fmt.Println(idErr.Error())
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	var comment model.Comment
+
+	if err := model.DB.First(&comment, id).Error; err != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	if comment.UserID != user.ID {
+		sendErrJson("您无权执行此操作", c)
+		return
+	}
+
+	tx := model.DB.Begin()
+
+	if err := tx.Delete(comment).Error; err != nil {
+		tx.Rollback()
+		sendErrJson("error", c)
+		return
+	}
+
+	//更新对应的数据
+	if comment.SourceName == model.CommentSourceArticle {
+		//对文章进行更新
+		var article model.Article
+
+		if err := tx.First(&article, comment.SourceID).Error; err != nil {
+			tx.Rollback()
+			sendErrJson("error", c)
+			return
+		}
+
+		articleData := map[string]interface{}{
+			"comment_count": article.CommentCount - 1,
+		}
+
+		if article.LastUserID == user.ID {
+			articleData["last_user_id"] = 0
+		}
+
+		if err := tx.Model(&article).Updates(articleData).Error; err != nil {
+			tx.Rollback()
+			sendErrJson("error", c)
+			return
+		}
+	} else if comment.SourceName == model.CommentSourceVote {
+		var vote model.Vote
+		if err := tx.First(&vote, comment.SourceID).Error; err != nil {
+			tx.Rollback()
+			sendErrJson("error", c)
+			return
+		}
+
+		voteData := map[string]interface{}{
+			"comment_count": vote.CommentCount - 1,
+		}
+
+		if vote.LastUserID == user.ID {
+			voteData["last_user_id"] = 0
+		}
+
+		if err := tx.Model(&vote).Updates(voteData).Error; err != nil {
+			tx.Rollback()
+			sendErrJson("error", c)
+			return
+		}
+	}
+
+	//删除评论  用户积分减少  作者积分不变
+	userMap := map[string]interface{}{
+		"comment_count": user.CommentCount - 1,
+		"score":         user.Score - model.CommentScore,
+	}
+
+	if err := tx.Model(&user).Updates(userMap).Error; err != nil {
+		tx.Rollback()
+		sendErrJson("error", c)
+		return
+	}
+
+	if err := model.UserToRedis(user); err != nil {
+		tx.Rollback()
+		sendErrJson("error", c)
+		return
+	}
+
+	tx.Commit()
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"id": comment.ID,
 		},
 	})
 
