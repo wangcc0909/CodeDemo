@@ -9,6 +9,10 @@ import (
 	"gopractice/util"
 	"github.com/jinzhu/gorm"
 	"net/http"
+	"github.com/gomodule/redigo/redis"
+	"strings"
+	"unicode/utf8"
+	"time"
 )
 
 //查询用户的评论
@@ -247,6 +251,291 @@ func SourceComments(c *gin.Context) {
 		"msg":   "success",
 		"data": gin.H{
 			"comments": comments,
+		},
+	})
+
+}
+
+//创建评论
+func Create(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	iUser, _ := c.Get("user")
+
+	user := iUser.(model.User)
+
+	RedisConn := model.RedisPool.Get()
+
+	defer RedisConn.Close()
+
+	minuteKey := model.CommentMinuteLimit + fmt.Sprintf("%d", user.ID)
+
+	minuteCount, minuteErr := redis.Int64(RedisConn.Do("GET", minuteKey))
+	if minuteErr == nil && minuteCount > model.CommentMinuteLimitCount {
+		sendErrJson("您的操作过于频繁,请先休息一会", c)
+		return
+	}
+
+	minuteRemainingTime, _ := redis.Int64(RedisConn.Do("TTL", minuteKey))
+
+	if minuteRemainingTime < 0 || minuteRemainingTime > 60 {
+		minuteRemainingTime = 60
+	}
+
+	if _, err := RedisConn.Do("SET", minuteKey, minuteCount+1, "EX", minuteRemainingTime); err != nil {
+		fmt.Println("redis set failed err:", err)
+		sendErrJson("内部错误", c)
+		return
+	}
+
+	dayKey := model.CommentDayLimit + fmt.Sprintf("%d", user.ID)
+
+	dayCount, dayErr := redis.Int64(RedisConn.Do("GET", dayKey))
+
+	if dayErr == nil && dayCount > model.CommentMinuteLimitCount {
+		sendErrJson("您今天的操作过于频繁,请先休息一会", c)
+		return
+	}
+
+	dayRemainingTime, _ := redis.Int64(RedisConn.Do("TTL", dayKey))
+
+	secondOfDay := int64(24 * 60 * 60)
+	if dayRemainingTime < 0 || dayRemainingTime > secondOfDay {
+		dayRemainingTime = secondOfDay
+	}
+
+	if _, err := RedisConn.Do("SET", dayKey, dayCount+1, "EX", dayRemainingTime); err != nil {
+		fmt.Println("redis set failed err:", err)
+		sendErrJson("内部错误", c)
+		return
+	}
+
+	Save(c, false)
+}
+
+//保存评论
+/**
+先更新用户的信息再更新文章的信息
+ */
+func Save(c *gin.Context, isEdit bool) {
+	sendErrJson := common.SendErrJson
+	var comment model.Comment
+	var parentComment model.Comment
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	if user.Role == model.UserRoleCrawler {
+		sendErrJson("爬虫管理员不能回复", c)
+		return
+	}
+
+	//编辑评论时只传id 和 content
+	if err := c.ShouldBindJSON(&comment); err != nil {
+		sendErrJson("参数无效", c)
+		return
+	}
+
+	var article model.Article
+	var vote model.Vote
+
+	//不是重新编辑
+	if !isEdit {
+		if comment.SourceName != model.CommentSourceArticle && comment.SourceName != model.CommentSourceVote {
+			sendErrJson("无效的sourceName", c)
+			return
+		}
+
+		if comment.SourceName == model.CommentSourceArticle {
+			if err := model.DB.First(&article, comment.SourceID).Error; err != nil {
+				sendErrJson("无效的sourceName", c)
+				return
+			}
+		}
+
+		if comment.SourceName == model.CommentSourceVote {
+			if err := model.DB.First(&vote, comment.SourceID).Error; err != nil {
+				sendErrJson("无效的sourceName", c)
+				return
+			}
+		}
+
+		if comment.ParentID != model.NoParent {
+			if err := model.DB.First(&parentComment, comment.ParentID).Error; err != nil {
+				sendErrJson("无效的parentID", c)
+				return
+			}
+
+			if parentComment.SourceID != comment.SourceID {
+				sendErrJson("无效的parentID", c)
+				return
+			}
+		}
+	}
+
+	comment.Content = strings.TrimSpace(comment.Content)
+
+	if comment.Content == "" {
+		sendErrJson("评论不能为空", c)
+		return
+	}
+
+	if utf8.RuneCountInString(comment.Content) > model.MaxCommentLen {
+		msg := "评论不能超过" + fmt.Sprintf("%d", model.MaxCommentLen) + "个字符"
+		sendErrJson(msg, c)
+		return
+	}
+
+	comment.Status = model.CommentVertifying //设置为校验评论的合法性
+	comment.UserID = user.ID
+
+	var updateComment model.Comment
+
+	if !isEdit {
+		comment.ContentType = model.ContentTypeMarkdown
+
+		tx := model.DB.Begin()
+
+		if err := tx.Create(&comment).Error; err != nil {
+			fmt.Println(err.Error())
+			tx.Rollback()
+			sendErrJson("error", c)
+			return
+		}
+
+		updateUserMap := map[string]interface{}{
+			"comment_count": user.CommentCount + 1,
+			"score":         user.Score + model.CommentScore,
+		}
+
+		if err := tx.Model(&user).Updates(updateUserMap).Error; err != nil {
+			fmt.Println(err.Error())
+			tx.Rollback()
+			sendErrJson("error", c)
+			return
+		}
+
+		if err := model.UserToRedis(user); err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error", c)
+			return
+		}
+
+		var author model.User //文章作者
+
+		if comment.SourceName == model.CommentSourceArticle {
+			author.ID = article.UserID
+			articleMap := map[string]interface{}{
+				"comment_count":   article.CommentCount + 1,
+				"last_user_id":    user.ID,
+				"last_comment_at": time.Now(),
+			}
+
+			if err := tx.Model(&article).Updates(articleMap).Error; err != nil {
+				fmt.Println(err.Error())
+				tx.Rollback()
+				sendErrJson("error", c)
+				return
+			}
+		} else if comment.SourceName == model.CommentSourceVote {
+			author.ID = vote.UserID
+			voteMap := map[string]interface{}{
+				"comment_count":   vote.CommentCount + 1,
+				"last_user_id":    user.ID,
+				"last_comment_at": time.Now(),
+			}
+
+			if err := tx.Model(&vote).Updates(voteMap).Error; err != nil {
+				fmt.Println(err.Error())
+				tx.Rollback()
+				sendErrJson("error", c)
+				return
+			}
+		}
+
+		//自己评论自己的不增加积分
+		if user.ID != author.ID {
+			if err := tx.First(&author, author.ID).Error; err != nil {
+				fmt.Println(err.Error())
+				tx.Rollback()
+				sendErrJson("error", c)
+				return
+			}
+
+			authorScore := author.Score + model.ByCollectScore
+			if err := tx.Model(&author).Update("score", authorScore).Error; err != nil {
+				fmt.Println(err.Error())
+				tx.Rollback()
+				sendErrJson("error", c)
+				return
+			}
+		}
+
+		//回复别人的话题时给消息提示
+		//对回复进行回复,即使回复属于自己创建的也给父回复发送消息
+		if user.ID != author.ID || comment.ParentID != model.NoParent {
+			var message model.Message
+			message.FromUserId = user.ID
+			message.SourceId = comment.SourceID
+			message.SourceName = comment.SourceName
+			message.CommentId = comment.ID
+			message.Readed = false
+			if comment.ParentID != model.NoParent {
+				message.Type = model.MessageTypeCommentComment
+				message.ToUserId = parentComment.UserID
+			} else if comment.SourceName == model.CommentSourceArticle {
+				message.Type = model.MessageTypeCommentArticle
+				message.ToUserId = author.ID
+			} else if comment.SourceName == model.CommentSourceVote {
+				message.Type = model.MessageTypeCommentVote
+				message.ToUserId = author.ID
+			}
+
+			if err := model.DB.Create(&message).Error; err != nil {
+				fmt.Println(err.Error())
+				tx.Rollback()
+				sendErrJson("error", c)
+				return
+			}
+		}
+		tx.Commit()
+	} else {
+		if err := model.DB.First(&updateComment, comment.ID).Error; err != nil {
+			sendErrJson("无效的ID", c)
+			return
+		}
+
+		if user.ID != updateComment.UserID {
+			sendErrJson("您无权执行此操作", c)
+			return
+		}
+
+		updateCommentMap := map[string]interface{}{
+			"content": comment.Content,
+			"status":  model.CommentVertifying,
+		}
+
+		if err := model.DB.Model(&updateComment).Updates(updateCommentMap).Error; err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error", c)
+			return
+		}
+	}
+
+	var commentJson model.Comment
+
+	if isEdit {
+		commentJson = updateComment
+	} else {
+		commentJson = comment
+	}
+
+	commentJson.User = user
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"comment": commentJson,
 		},
 	})
 
