@@ -7,6 +7,8 @@ const (
 	//每页最大的请求数量
 	MaxPageSize = 100
 
+	PageSize = 20
+
 	//每页最小的请求数量
 	MinPageSize = 5
 
