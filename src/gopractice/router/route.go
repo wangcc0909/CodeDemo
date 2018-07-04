@@ -83,6 +83,9 @@ func Route(router *gin.Engine) {
 		api.DELETE("/comments/delete/:id",middleware.SigninRequired,comment.Delete)
 
 		api.GET("/votes",vote.List)
+		api.GET("/votes/info/:id",vote.Info)
+		api.GET("/votes/max/bybrowse",vote.ListMaxBrowse)
+		api.GET("/votes/max/bycomment",vote.ListMaxComment)
 
 	}
 }
