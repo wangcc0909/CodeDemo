@@ -612,3 +612,155 @@ func UserVoteVoteItem(c *gin.Context) {
 		"data":  gin.H{},
 	})
 }
+
+//更新投票
+func Update(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+
+	var vote model.Vote
+	if err := c.ShouldBindJSON(&vote); err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("参数错误", c)
+		return
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+	var voteErr error
+	tx := model.DB.Begin()
+
+	if vote, voteErr = save(true, vote, user, tx); voteErr != nil {
+		tx.Rollback()
+		sendErrJson("error", c)
+		return
+	}
+
+	tx.Commit()
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data":  vote,
+	})
+}
+
+//编辑投票选项
+func EditVoteItem(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var voteItem model.VoteItem
+
+	if err := c.ShouldBindJSON(&voteItem); err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("参数无效", c)
+		return
+	}
+
+	voteItem.Name = util.AvoidXss(voteItem.Name)
+	voteItem.Name = strings.TrimSpace(voteItem.Name)
+
+	if voteItem.Name == "" {
+		sendErrJson("名称不能为空", c)
+		return
+	}
+
+	if utf8.RuneCountInString(voteItem.Name) > model.MaxNameLen {
+		msg := "名称不能超过" + fmt.Sprintf("%d", model.MaxNameLen) + "个字符"
+		sendErrJson(msg, c)
+		return
+	}
+
+	var queryVoteItem model.VoteItem
+
+	if err := model.DB.First(&queryVoteItem, voteItem.ID).Error; err != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	queryVoteItem.Name = voteItem.Name
+	if err := model.DB.Save(&queryVoteItem).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"voteItem": voteItem,
+		},
+	})
+}
+
+//删除投票
+func Delete(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	//只删除投票本身  用户投票记录保留
+
+	voteId, idErr := strconv.Atoi(c.Param("id"))
+
+	if idErr != nil {
+		fmt.Println(idErr.Error())
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	var vote model.Vote
+
+	if err := model.DB.First(&vote, voteId).Error; err != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	tx := model.DB.Begin()
+
+	if err := tx.Delete(&vote).Error; err != nil {
+		tx.Rollback()
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	if err := model.DB.Where("DELETE FROM vote_items WHERE vote_id = ?", voteId).Error; err != nil {
+		tx.Rollback()
+		sendErrJson("error", c)
+		return
+	}
+
+	tx.Commit()
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"voteID": voteId,
+		},
+	})
+}
+
+func DeleteItem(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+
+	voteItemId, idErr := strconv.Atoi(c.Param("id"))
+
+	if idErr != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+	var voteItem model.VoteItem
+	if err := model.DB.First(&voteItem, voteItemId).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	if err := model.DB.Delete(&voteItem).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"voteItemId": voteItemId,
+		},
+	})
+}

@@ -90,5 +90,9 @@ func Route(router *gin.Engine) {
 		api.POST("/votes/create",middleware.EditorRequired,vote.Create)
 		api.POST("/votes/item/create",middleware.EditorRequired,vote.CreateVoteItem)
 		api.POST("/votes/uservote/:id",middleware.SigninRequired,vote.UserVoteVoteItem)
+		api.PUT("/votes/update",middleware.EditorRequired,vote.Update)
+		api.PUT("/votes/item/edit",middleware.EditorRequired,vote.EditVoteItem)
+		api.DELETE("/votes/delete/:id",middleware.EditorRequired,vote.Delete)
+		api.DELETE("/votes/item/delete/:id",middleware.EditorRequired,vote.DeleteItem)
 	}
 }
