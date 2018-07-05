@@ -86,6 +86,7 @@ func Route(router *gin.Engine) {
 		api.GET("/votes/info/:id",vote.Info)
 		api.GET("/votes/max/bybrowse",vote.ListMaxBrowse)
 		api.GET("/votes/max/bycomment",vote.ListMaxComment)
-
+		api.GET("/votes/user/:userID",vote.UserVoteList)
+		api.POST("/votes/create",middleware.SigninRequired,vote.Create)
 	}
 }

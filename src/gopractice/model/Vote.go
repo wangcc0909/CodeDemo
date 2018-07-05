@@ -25,6 +25,7 @@ type Vote struct {
 	VoteItems     []VoteItem `json:"voteItems"`
 }
 
+//投票的选项
 type VoteItem struct {
 	ID        uint       `gorm:"primary_key" json:"id"`
 	CreatedAt time.Time  `json:"createdAt"`
