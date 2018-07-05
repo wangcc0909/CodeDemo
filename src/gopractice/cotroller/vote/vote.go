@@ -15,6 +15,7 @@ import (
 	"unicode/utf8"
 )
 
+//创建投票
 func Create(c *gin.Context) {
 	sendErrJson := common.SendErrJson
 	var voteErr error
@@ -736,6 +737,7 @@ func Delete(c *gin.Context) {
 	})
 }
 
+//删除投票选项
 func DeleteItem(c *gin.Context) {
 	sendErrJson := common.SendErrJson
 

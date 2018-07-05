@@ -93,3 +93,15 @@ type BookChapterComment struct {
 	UserID      uint                 `json:"userId"`
 	User        User                 `json:"user"`
 }
+
+const (
+	//BookReadLimitsPrivate 私有
+	BookReadLimitsPrivate = "book_read_limits_private"
+)
+
+const (
+	//未发布
+	BookUnpublish = "book_unpublish"
+	//BookVerifyFail  审核未通过
+	BookVerifyFail = "book_verify_fail"
+)
