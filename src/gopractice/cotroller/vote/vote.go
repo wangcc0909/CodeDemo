@@ -166,6 +166,36 @@ func saveVoteItem(voteItems model.VoteItem, tx *gorm.DB) (model.VoteItem, error)
 	return voteItems, nil
 }
 
+//创建投票项
+func CreateVoteItem(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var voteItem model.VoteItem
+	if err := c.ShouldBindJSON(&voteItem); err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("参数无效", c)
+		return
+	}
+
+	var itemErr error
+	tx := model.DB.Begin()
+
+	if voteItem, itemErr = saveVoteItem(voteItem, tx); itemErr != nil {
+		tx.Rollback()
+		fmt.Println(itemErr.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	tx.Commit()
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data":  voteItem,
+	})
+}
+
+//获取投票列表
 func List(c *gin.Context) {
 	sendErrJson := common.SendErrJson
 	var status int
@@ -512,4 +542,73 @@ func UserVoteList(c *gin.Context) {
 		},
 	})
 
+}
+
+//UserVoteVoteItem  用户投了一票
+func UserVoteVoteItem(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	id, idErr := strconv.Atoi(c.Param("id"))
+	if idErr != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	var voteItem model.VoteItem
+
+	if err := model.DB.First(&voteItem, id).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	var vote model.Vote
+	if err := model.DB.Model(&voteItem).Related(&vote).Error; err != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	if vote.Status == model.VoteOver {
+		sendErrJson("投票已经结束", c)
+		return
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	var existUserVote model.UserVote
+
+	if err := model.DB.Where("user_id = ? AND vote_id = ?", user.ID, vote.ID).Find(&existUserVote).Error; err == nil {
+		sendErrJson("已参与过投票", c)
+		return
+	}
+
+	voteItem.Count++
+	if err := model.DB.Save(&voteItem).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	userVote := model.UserVote{
+		UserID:     user.ID,
+		VoteID:     voteItem.VoteID,
+		VoteItemID: voteItem.ID,
+	}
+
+	if err := model.DB.Create(&userVote).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	if err := model.DB.Save(&vote).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data":  gin.H{},
+	})
 }
