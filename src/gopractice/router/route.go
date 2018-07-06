@@ -97,5 +97,8 @@ func Route(router *gin.Engine) {
 		api.DELETE("/votes/item/delete/:id",middleware.EditorRequired,vote.DeleteItem)
 
 		api.GET("/books/",book.List)
+		api.GET("/books/categories",category.BookCategoryList)
+		api.GET("/books/my/:userID",middleware.SigninRequired,book.MyBook)
+
 	}
 }

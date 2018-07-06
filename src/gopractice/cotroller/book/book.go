@@ -64,3 +64,47 @@ func List(c *gin.Context) {
 	})
 
 }
+
+func MyBook(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var books []model.Book
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	var pageNo int
+	var pageNoErr error
+	if pageNo, pageNoErr = strconv.Atoi(c.Query("pageNo")); pageNoErr != nil {
+		pageNo = 1
+	}
+
+	if pageNo < 1 {
+		pageNo = 1
+	}
+
+	pageSize := model.PageSize
+
+	offset := (pageNo - 1) * pageSize
+	if err := model.DB.Model(&model.Book{}).Where("user_id = ?", user.ID).Offset(offset).Limit(pageSize).
+		Order("created_at DESC").Find(&books).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	var totalCount int
+	if err := model.DB.Model(&model.Book{}).Where("user_id = ?", user.ID).Count(&totalCount).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"books":      books,
+			"pageNo":     pageNo,
+			"pageSize":   pageSize,
+			"totalCount": totalCount,
+		},
+	})
+}
