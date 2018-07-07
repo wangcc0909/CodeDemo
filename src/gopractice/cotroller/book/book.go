@@ -10,6 +10,7 @@ import (
 	"gopractice/util"
 	"strings"
 	"unicode/utf8"
+	"time"
 )
 
 //创建图书
@@ -342,6 +343,7 @@ func List(c *gin.Context) {
 
 }
 
+//获取某用户的所有书籍
 func MyBook(c *gin.Context) {
 	sendErrJson := common.SendErrJson
 	var books []model.Book
@@ -442,6 +444,7 @@ func UserPublicBooks(c *gin.Context) {
 	})
 }
 
+//获取图书的信息
 func Info(c *gin.Context) {
 	sendErrJson := common.SendErrJson
 
@@ -551,6 +554,7 @@ func Chapters(c *gin.Context) {
 	})
 }
 
+//获取章节
 func Chapter(c *gin.Context) {
 	sendErrJson := common.SendErrJson
 
@@ -707,6 +711,7 @@ func UpdateChapterContent(c *gin.Context) {
 	})
 }
 
+//更新章节的名字
 func UpdateChapterName(c *gin.Context) {
 	sendErrJson := common.SendErrJson
 	type ReqData struct {
@@ -761,6 +766,84 @@ func UpdateChapterName(c *gin.Context) {
 		"msg":   "success",
 		"data": gin.H{
 			"chapter": chapter,
+		},
+	})
+}
+
+//删除图书
+func Delete(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	bookID, idErr := strconv.Atoi(c.Param("id"))
+
+	if idErr != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	var book model.Book
+	if err := model.DB.First(&book, bookID).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	if book.UserID != user.ID {
+		sendErrJson("您没有权限执行此操作", c)
+		return
+	}
+
+	if err := model.DB.Delete(&book).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"id": bookID,
+		},
+	})
+}
+
+func DeleteChapter(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	chapterID, idErr := strconv.Atoi(c.Param("chapterID"))
+	if idErr != nil {
+		sendErrJson("无效的chapterID", c)
+		return
+	}
+
+	var chapter model.BookChapter
+	if err := model.DB.First(&chapter, chapterID).Error; err != nil {
+		sendErrJson("无效的chapterID", c)
+		return
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	if chapter.UserID != user.ID {
+		sendErrJson("您没有权限执行此操作", c)
+		return
+	}
+
+	var sql = "UPDATE book_chapters SET delete_at = ? WHERE id = ? OR parent_id = ?"
+	if err := model.DB.Exec(sql, time.Now(), chapterID, chapterID).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"id": chapterID,
 		},
 	})
 

@@ -110,5 +110,7 @@ func Route(router *gin.Engine) {
 		api.PUT("/books/publish/:bookID",middleware.SigninRequired,book.Publish)
 		api.PUT("/books/chapters/content",middleware.SigninRequired,book.UpdateChapterContent)
 		api.PUT("/books/chapters/updatename",middleware.SigninRequired,book.UpdateChapterName)
+		api.DELETE("/books/delete/:id",middleware.SigninRequired,book.Delete)
+		api.DELETE("/books/chapters/:chapterID",middleware.SigninRequired,book.DeleteChapter)
 	}
 }
