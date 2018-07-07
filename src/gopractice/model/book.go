@@ -95,13 +95,30 @@ type BookChapterComment struct {
 }
 
 const (
+
+)
+
+const (
+	//公开
+	BookReadLimitsPublic = "book_read_limits_public"
+
 	//BookReadLimitsPrivate 私有
 	BookReadLimitsPrivate = "book_read_limits_private"
+
+	//BookReadLimitPay 付费
+	BookReadLimitsPay = "book_read_limits_pay"
 )
 
 const (
 	//未发布
 	BookUnpublish = "book_unpublish"
+
+	//BookVerifySuccess 审核通过
+	BookVerifySuccess = "book_verify_success"
+
 	//BookVerifyFail  审核未通过
 	BookVerifyFail = "book_verify_fail"
+
+	//图书审核中
+	BookVerifying = "book_verifying"
 )

@@ -99,6 +99,10 @@ func Route(router *gin.Engine) {
 		api.GET("/books/",book.List)
 		api.GET("/books/categories",category.BookCategoryList)
 		api.GET("/books/my/:userID",middleware.SigninRequired,book.MyBook)
-
+		api.GET("/books/user/public/:userID",book.UserPublicBooks)
+		api.GET("/books/info/:id",middleware.SetContextUser,book.Info)
+		api.GET("/books/chapters/:bookID",middleware.SetContextUser,book.Chapters)
+		api.GET("/books/chapter/:chapterID",middleware.SetContextUser,book.Chapter)
+		api.POST("/books",middleware.SigninRequired,book.Create)
 	}
 }

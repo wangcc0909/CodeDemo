@@ -17,6 +17,9 @@ const (
 
 	//文章的最大字节数
 	MaxContentLen = 50000
+
+	//最多的分类个数
+	MaxCategoriesLen = 6
 )
 
 //积分相关的常量

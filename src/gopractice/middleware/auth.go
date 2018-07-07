@@ -80,3 +80,18 @@ func EditorRequired(c *gin.Context) {
 	}
 
 }
+
+//给context设置user
+func SetContextUser(c *gin.Context) {
+	var user model.User
+	var err error
+
+	if user,err = getUser(c);err != nil {
+		c.Set("user",nil)
+		c.Next()
+		return
+	}
+
+	c.Set("user",user)
+	c.Next()
+}
