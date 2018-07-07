@@ -612,3 +612,156 @@ func Chapter(c *gin.Context) {
 		},
 	})
 }
+
+//发布图书
+func Publish(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	id, idErr := strconv.Atoi(c.Param("bookID"))
+	if idErr != nil {
+		sendErrJson("无效的bookID", c)
+		return
+	}
+
+	var book model.Book
+	if err := model.DB.First(&book, id).Error; err != nil {
+		sendErrJson("无效的bookID", c)
+		return
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	if book.UserID != user.ID {
+		sendErrJson("您没有权限执行此操作", c)
+		return
+	}
+
+	book.Status = model.BookVerifySuccess
+	if err := model.DB.Save(&book).Error; err != nil {
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"book": book,
+		},
+	})
+
+}
+
+//更新图书的章节内容
+func UpdateChapterContent(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	type ReqData struct {
+		ID          uint   `json:"chapterID"`
+		Content     string `json:"content"`
+		HTMLContent string `json:"htmlContent"`
+	}
+
+	var reqData ReqData
+	if err := c.ShouldBindJSON(&reqData); err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("参数错误", c)
+		return
+	}
+
+	reqData.Content = strings.TrimSpace(reqData.Content)
+	reqData.HTMLContent = strings.TrimSpace(reqData.HTMLContent)
+
+	if reqData.HTMLContent != "" {
+		reqData.HTMLContent = util.AvoidXss(reqData.HTMLContent)
+	}
+
+	var chapter model.BookChapter
+	if err := model.DB.First(&chapter, reqData.ID).Error; err != nil {
+		sendErrJson("错误的章节ID", c)
+		return
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	if chapter.UserID != user.ID {
+		sendErrJson("您没有权限执行此操作", c)
+		return
+	}
+
+	chapter.Content = reqData.Content
+	chapter.HTMLContent = reqData.HTMLContent
+
+	if err := model.DB.Save(&chapter).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"id": reqData.ID,
+		},
+	})
+}
+
+func UpdateChapterName(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	type ReqData struct {
+		ID   uint   `json:"id"`
+		Name string `json:"name" binding:"required,min=1,max=100"`
+	}
+	var reqData ReqData
+	if err := c.ShouldBindJSON(&reqData); err != nil {
+		sendErrJson("参数错误", c)
+		return
+	}
+
+	reqData.Name = util.AvoidXss(reqData.Name)
+	reqData.Name = strings.TrimSpace(reqData.Name)
+
+	if reqData.Name == "" {
+		sendErrJson("章节的名字不能为空", c)
+		return
+	}
+
+	if utf8.RuneCountInString(reqData.Name) > model.MaxNameLen {
+		msg := "章节的名称不能超过" + fmt.Sprintf("%d", model.MaxNameLen) + "个字符"
+		sendErrJson(msg, c)
+		return
+	}
+
+	var chapter model.BookChapter
+
+	if err := model.DB.First(&chapter, reqData.ID).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("无效的章节ID", c)
+		return
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	if chapter.UserID != user.ID {
+		sendErrJson("您没有权限执行此操作", c)
+		return
+	}
+
+	chapter.Name = reqData.Name
+	if err := model.DB.Save(&chapter).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"chapter": chapter,
+		},
+	})
+
+}

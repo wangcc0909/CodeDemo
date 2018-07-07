@@ -107,5 +107,8 @@ func Route(router *gin.Engine) {
 		api.POST("/books/chapters",middleware.SigninRequired,book.CreateChapter)
 		api.PUT("/books/update",middleware.SigninRequired,book.Update)
 		api.PUT("/books/updatename",middleware.SigninRequired,book.UpdateName)
+		api.PUT("/books/publish/:bookID",middleware.SigninRequired,book.Publish)
+		api.PUT("/books/chapters/content",middleware.SigninRequired,book.UpdateChapterContent)
+		api.PUT("/books/chapters/updatename",middleware.SigninRequired,book.UpdateChapterName)
 	}
 }
