@@ -12,14 +12,72 @@ import (
 	"unicode/utf8"
 )
 
+//创建图书
 func Create(c *gin.Context) {
 	Save(c, false)
 }
 
+//更新图书
 func Update(c *gin.Context) {
 	Save(c, true)
 }
 
+//更新名字
+func UpdateName(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var bookData model.Book
+	if err := c.ShouldBindJSON(&bookData); err != nil {
+		sendErrJson("参数错误", c)
+		return
+	}
+
+	bookData.Name = util.AvoidXss(bookData.Name)
+	bookData.Name = strings.TrimSpace(bookData.Name)
+
+	if bookData.Name == "" {
+		sendErrJson("图书名称不能为空", c)
+		return
+	}
+
+	if utf8.RuneCountInString(bookData.Name) > model.MaxNameLen {
+		msg := "图书的名称不能超过" + fmt.Sprintf("%d", model.MaxNameLen) + "个字符"
+		sendErrJson(msg, c)
+		return
+	}
+
+	var book model.Book
+
+	if err := model.DB.First(&book, bookData.ID).Error; err != nil {
+		sendErrJson("无效的图书ID", c)
+		return
+	}
+
+	iUer, _ := c.Get("user")
+	user := iUer.(model.User)
+
+	if book.UserID != user.ID {
+		sendErrJson("没有权限", c)
+		return
+	}
+
+	book.Name = bookData.Name
+
+	if err := model.DB.Save(&book).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"book": book,
+		},
+	})
+}
+
+//保存图书
 func Save(c *gin.Context, isEdit bool) {
 	sendErrJson := common.SendErrJson
 	var book model.Book
@@ -160,7 +218,76 @@ func Save(c *gin.Context, isEdit bool) {
 			"book": bookJson,
 		},
 	})
+}
 
+//创建图书的章节
+func CreateChapter(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+
+	type ReqData struct {
+		Name     string `json:"name" binding:"required,min=1,max=100"`
+		ParentID uint   `json:"parentId"`
+		BookID   uint   `json:"bookId"`
+	}
+
+	var reqData ReqData
+	if err := c.ShouldBindJSON(&reqData); err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("参数错误", c)
+		return
+	}
+
+	reqData.Name = util.AvoidXss(reqData.Name)
+	reqData.Name = strings.TrimSpace(reqData.Name)
+
+	if reqData.Name == "" {
+		sendErrJson("章节的名称不能为空", c)
+		return
+	}
+
+	var chapter model.BookChapter
+	chapter.Name = reqData.Name
+	chapter.ParentID = reqData.ParentID
+	chapter.BookID = reqData.BookID
+
+	if chapter.ParentID != model.NoParent {
+		var parentChapter model.BookChapter
+		if err := model.DB.First(&parentChapter, chapter.ParentID).Error; err != nil {
+			sendErrJson("无效的parentID", c)
+			return
+		}
+	}
+
+	var book model.Book
+	if err := model.DB.First(&book, chapter.BookID).Error; err != nil {
+		sendErrJson("无效的bookId", c)
+		return
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	if book.UserID != user.ID {
+		sendErrJson("没有权限", c)
+		return
+	}
+
+	chapter.ContentType = book.ContentType
+	chapter.UserID = user.ID
+
+	if err := model.DB.Create(&chapter).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"chapter": chapter,
+		},
+	})
 }
 
 //获取图书列表

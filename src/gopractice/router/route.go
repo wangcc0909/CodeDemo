@@ -104,5 +104,8 @@ func Route(router *gin.Engine) {
 		api.GET("/books/chapters/:bookID",middleware.SetContextUser,book.Chapters)
 		api.GET("/books/chapter/:chapterID",middleware.SetContextUser,book.Chapter)
 		api.POST("/books",middleware.SigninRequired,book.Create)
+		api.POST("/books/chapters",middleware.SigninRequired,book.CreateChapter)
+		api.PUT("/books/update",middleware.SigninRequired,book.Update)
+		api.PUT("/books/updatename",middleware.SigninRequired,book.UpdateName)
 	}
 }
