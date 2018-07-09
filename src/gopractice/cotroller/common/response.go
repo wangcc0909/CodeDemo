@@ -30,7 +30,7 @@ func SendErrJson(msg string, args ...interface{}) {
 
 		errNo = theErrNo
 
-		theCtx, ok := args[0].(*gin.Context)
+		theCtx, ok := args[1].(*gin.Context)
 
 		if !ok {
 			panic("缺少 *gin.Context")

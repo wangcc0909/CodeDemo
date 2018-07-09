@@ -15,6 +15,12 @@ const (
 	//文章的名称最大字节数
 	MaxNameLen = 100
 
+	//最大的排序号
+	MaxOrder = 1000
+
+	//最小的排序号
+	MinOrder = 0
+
 	//文章的最大字节数
 	MaxContentLen = 50000
 

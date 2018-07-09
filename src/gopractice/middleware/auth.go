@@ -95,3 +95,21 @@ func SetContextUser(c *gin.Context) {
 	c.Set("user",user)
 	c.Next()
 }
+
+//必须是管理员
+func AdminRequired(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var user model.User
+	var err error
+	if user, err = getUser(c);err != nil {
+		sendErrJson("未登录",model.ErrorCode.LoginTimeOut,c)
+		return
+	}
+
+	if user.Role == model.UserRoleCrawler || user.Role == model.UserRoleAdmin || user.Role == model.UserRoleSuperAdmin {
+		c.Set("user",user)
+		c.Next()
+	}else {
+		sendErrJson("没有权限",c)
+	}
+}

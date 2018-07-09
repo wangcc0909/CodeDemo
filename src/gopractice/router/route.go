@@ -15,6 +15,7 @@ import (
 	"gopractice/cotroller/vote"
 	"gopractice/cotroller/book"
 	"gopractice/cotroller/stats"
+	"gopractice/cotroller/keyvalueconfig"
 )
 
 //这里就是接口
@@ -115,5 +116,17 @@ func Route(router *gin.Engine) {
 		api.DELETE("/books/chapters/:chapterID",middleware.SigninRequired,book.DeleteChapter)
 
 		api.GET("/stats/visit",stats.PV)
+	}
+
+	adminAPI := router.Group(apiPrefix+"/admin",middleware.RefreshTokenCookie,middleware.AdminRequired)
+	{
+		adminAPI.POST("/keyvalueconfig",keyvalueconfig.SetKeyValue)
+		adminAPI.GET("/users",user.AllList)
+		adminAPI.GET("/books/categories",category.BookCategoryList)
+		adminAPI.POST("/books/categories/create",category.CreateBookCategory)
+
+		adminAPI.GET("/categories",category.List)
+		adminAPI.POST("/categories/create",category.Create)
+		adminAPI.POST("/categories/update",category.Update)
 	}
 }

@@ -949,3 +949,107 @@ func TopN(c *gin.Context, n int) {
 		})
 	}
 }
+
+//获取所有用户列表  只有管理员才能调用
+func AllList(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	role, _ := strconv.Atoi(c.Query("role"))
+
+	allUserRole := []int{
+		model.UserRoleNormal,
+		model.UserRoleEditor,
+		model.UserRoleAdmin,
+		model.UserRoleSuperAdmin,
+		model.UserRoleCrawler,
+	}
+
+	foundRole := false
+
+	for _, r := range allUserRole {
+		if r == role {
+			foundRole = true
+			break
+		}
+	}
+
+	var startTime string
+	var endTime string
+	if startAt, err := strconv.Atoi(c.Query("startAt")); err != nil {
+		startTime = time.Unix(0, 0).Format("2006-01-02 15:04:05")
+	} else {
+		startTime = time.Unix(int64(startAt/1000), 0).Format("2006-01-02 15:04:05")
+	}
+
+	if endAt, err := strconv.Atoi(c.Query("endAt")); err != nil {
+		endTime = time.Now().Format("2006-01-02 15:04:05")
+	} else {
+		endTime = time.Unix(int64(endAt/1000), 0).Format("2006-01-02 15:04:05")
+	}
+
+	pageNo, pageNoErr := strconv.Atoi(c.Query("pageNo"))
+	if pageNoErr != nil {
+		pageNo = 1
+	}
+
+	if pageNo < 1 {
+		pageNo = 1
+	}
+
+	pageSize := model.PageSize
+
+	offset := (pageNo - 1) * pageSize
+
+	var users []model.User
+	var totalCount int
+	if foundRole { //查询某种角色的用户
+		if err := model.DB.Where("created_at >= ? AND created_at < ? AND role = ?", startTime, endTime, role).
+			Count(&totalCount).Error; err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error", c)
+			return
+		}
+		if err := model.DB.Where("created_at >= ? AND created_at < ? AND role = ?", startTime, endTime, role).
+			Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error", c)
+			return
+		}
+	} else {
+		if err := model.DB.Where("created_at >= ? AND created_at < ?", startTime, endTime).
+			Count(&totalCount).Error; err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error", c)
+			return
+		}
+		if err := model.DB.Where("created_at >= ? AND created_at < ?", startTime, endTime).
+			Order("created_at DESC").Offset(offset).Limit(pageSize).Find(&users).Error; err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error", c)
+			return
+		}
+	}
+
+	var results []interface{}
+	for i := 0; i < len(users); i++ {
+		results = append(results, gin.H{
+			"id":          users[i].ID,
+			"name":        users[i].Name,
+			"email":       users[i].Email,
+			"role":        users[i].Role,
+			"status":      users[i].Status,
+			"createdAt":   users[i].CreatedAt,
+			"activatedAt": users[i].ActivateAt,
+		})
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"users":      results,
+			"pageNo":     pageNo,
+			"pageSize":   pageSize,
+			"totalCount": totalCount,
+		},
+	})
+}
