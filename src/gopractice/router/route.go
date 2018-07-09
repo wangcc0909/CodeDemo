@@ -14,6 +14,7 @@ import (
 	"gopractice/cotroller/comment"
 	"gopractice/cotroller/vote"
 	"gopractice/cotroller/book"
+	"gopractice/cotroller/stats"
 )
 
 //这里就是接口
@@ -112,5 +113,7 @@ func Route(router *gin.Engine) {
 		api.PUT("/books/chapters/updatename",middleware.SigninRequired,book.UpdateChapterName)
 		api.DELETE("/books/delete/:id",middleware.SigninRequired,book.Delete)
 		api.DELETE("/books/chapters/:chapterID",middleware.SigninRequired,book.DeleteChapter)
+
+		api.GET("/stats/visit",stats.PV)
 	}
 }
