@@ -378,6 +378,11 @@ func List(c *gin.Context) {
 	queryList(c, false)
 }
 
+//文章列表 提供给后台查询使用的
+func AllList(c *gin.Context) {
+	queryList(c, true)
+}
+
 //评论最多的文章  返回5条
 func ListMaxComment(c *gin.Context) {
 	sendErrJson := common.SendErrJson
@@ -806,20 +811,20 @@ func DeleteTop(c *gin.Context) {
 		sendErrJson("文章id错误", c)
 		return
 	}
-	
+
 	var topArticle model.TopArticle
 
-	if err := model.DB.Where("article_id = ?",id).Find(&topArticle).Error;err != nil {
-		sendErrJson("无效的文章ID",c)
+	if err := model.DB.Where("article_id = ?", id).Find(&topArticle).Error; err != nil {
+		sendErrJson("无效的文章ID", c)
 		return
 	}
 
 	if model.DB.Delete(&topArticle).Error != nil {
-		sendErrJson("error",c)
+		sendErrJson("error", c)
 		return
 	}
 
-	c.JSON(http.StatusOK,gin.H{
+	c.JSON(http.StatusOK, gin.H{
 		"errNo": model.ErrorCode.SUCCESS,
 		"msg":   "success",
 		"data": gin.H{
@@ -885,6 +890,46 @@ func Delete(c *gin.Context) {
 		"msg":   "success",
 		"data": gin.H{
 			"id": id,
+		},
+	})
+}
+
+//更新文章的状态
+func UpdateStatus(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var reqData model.Article
+
+	if err := c.ShouldBindJSON(&reqData); err != nil {
+		sendErrJson("无效的ID或status", c)
+		return
+	}
+
+	articleID := reqData.ID
+	status := reqData.Status
+
+	var article model.Article
+	if err := model.DB.First(&article, articleID).Error; err != nil {
+		sendErrJson("无效的文章ID")
+		return
+	}
+
+	if status != model.ArticleVerifyFail && status != model.ArticleVerifying && status != model.ArticleVerifySuccess {
+		sendErrJson("无效的文章状态", c)
+		return
+	}
+
+	article.Status = status
+	if err := model.DB.Save(&article).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"id":     article.ID,
+			"status": article.Status,
 		},
 	})
 }

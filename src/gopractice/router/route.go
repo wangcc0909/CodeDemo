@@ -127,6 +127,12 @@ func Route(router *gin.Engine) {
 
 		adminAPI.GET("/categories",category.List)
 		adminAPI.POST("/categories/create",category.Create)
-		adminAPI.POST("/categories/update",category.Update)
+		adminAPI.PUT("/categories/update",category.Update)
+
+		adminAPI.GET("/articles",article.AllList)
+		adminAPI.PUT("/articles/status/update",article.UpdateStatus)
+
+		adminAPI.GET("/comments",comment.Comments)
+		adminAPI.GET("/comments/status/update/:id",comment.UpdateStatus)
 	}
 }

@@ -13,6 +13,7 @@ import (
 	"strings"
 	"unicode/utf8"
 	"time"
+	"math"
 )
 
 //查询用户的评论
@@ -651,5 +652,121 @@ func Delete(c *gin.Context) {
 			"id": comment.ID,
 		},
 	})
+}
 
+//查询评论列表
+func Comments(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var startTime string
+	var endTime string
+
+	if startAt, err := strconv.Atoi(c.Query("startAt")); err != nil {
+		startTime = time.Unix(0, 0).Format("2006-01-02 15:04:05")
+	} else {
+		startTime = time.Unix(int64(startAt/1000), 0).Format("2006-01-02 15:04:05")
+	}
+
+	if endAt, err := strconv.Atoi(c.Query("endAt")); err != nil {
+		endTime = time.Now().Format("2006-01-02 15:04:05")
+	} else {
+		endTime = time.Unix(int64(endAt/1000), 0).Format("2006-01-02 15:04:05")
+	}
+
+	var comments []model.Comment
+	var pageNo int
+	var pageNoErr error
+
+	if pageNo, pageNoErr = strconv.Atoi(c.Query("pageNo")); pageNoErr != nil {
+		pageNo = 1
+	}
+
+	if pageNo < 1 {
+		pageNo = 1
+	}
+
+	pageSize := model.PageSize
+
+	offset := (pageNo - 1) * pageSize
+
+	if err := model.DB.Where("created_at >= ? AND created_at < ?", startTime, endTime).Order("created_at DESC").
+		Offset(offset).Limit(pageSize).Find(comments).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	var count int
+	if err := model.DB.Model(&model.Comment{}).Where("created_at >= ? AND created_at < ?", startTime, endTime).Count(&count).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	for i := 0; i < len(comments); i++ {
+		if err := model.DB.Model(&comments[i]).Related(&comments[i].User, "users").Error; err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error", c)
+			return
+		}
+		comments[i].HTMLContent = util.MarkdownToHTML(comments[i].Content)
+		comments[i].Content = ""
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"comments":   comments,
+			"pageNo":     pageNo,
+			"pageSize":   pageSize,
+			"totalPage":  int(math.Ceil(float64(count) / float64(pageSize))),
+			"totalCount": count,
+		},
+	})
+}
+
+//更新评论的状态
+func UpdateStatus(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var reqData model.Comment
+	var commentID int
+	var idErr error
+	if commentID, idErr = strconv.Atoi(c.Param("id")); idErr != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	if err := c.ShouldBindJSON(&reqData); err != nil {
+		sendErrJson("参数无效", c)
+		return
+	}
+
+	status := reqData.Status
+	var comment model.Comment
+	if err := model.DB.First(&comment, commentID).Error; err != nil {
+		sendErrJson("无效的ID", c)
+		return
+	}
+
+	if status != model.CommentVertifying && status != model.CommentVertifySuccess && status != model.CommentVertifyFail {
+		sendErrJson("无效的状态", c)
+		return
+	}
+
+	comment.Status = status
+
+	if err := model.DB.Model(&comment).Update("status", status).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"id":     comment.ID,
+			"status": status,
+		},
+	})
 }
