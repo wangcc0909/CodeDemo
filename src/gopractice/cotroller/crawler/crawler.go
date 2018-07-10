@@ -516,5 +516,37 @@ func CustomCrawl(c *gin.Context) {
 		"msg":   "抓取完成",
 		"data":  gin.H{},
 	})
+}
 
+//创建爬虫账号
+func CreateAccount(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var users []model.User
+	if err := model.DB.Where("name = ?", config.ServerConfig.CrawlerName).Find(&users).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	if len(users) <= 0 { //创建爬虫账号
+		var user model.User
+		user.Name = config.ServerConfig.CrawlerName
+		user.Role = model.UserRoleCrawler
+		user.AvatarURL = ""
+		user.Status = model.UserStatusActived
+		if err := model.DB.Save(&user).Error; err != nil {
+			fmt.Println(err.Error())
+			sendErrJson("error", c)
+			return
+		}
+
+		c.JSON(http.StatusOK, gin.H{
+			"errNo": model.ErrorCode.SUCCESS,
+			"msg":   "success",
+			"data":  []model.User{user},
+		})
+		return
+	}
+
+	sendErrJson("爬虫账号已存在", c)
 }
