@@ -33,3 +33,11 @@ const (
 	//自定义
 	ArticleFromCustom = 10
 )
+
+const (
+	//爬取单篇文章
+	CrawlerScopePage = "page"
+
+	//爬取一批文章
+	CrawlerScopeList = "list"
+)

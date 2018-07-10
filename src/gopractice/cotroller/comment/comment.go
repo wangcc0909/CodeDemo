@@ -83,7 +83,6 @@ func UserCommentList(c *gin.Context) {
 	}
 
 	offset := (pageNo - 1) * pageSize
-
 	if orderType == 1 {
 		orderStr = "created_at"
 	} else if orderType == 2 {
@@ -98,7 +97,6 @@ func UserCommentList(c *gin.Context) {
 
 	var comments []model.Comment
 	var totalCount int
-
 	if err := model.DB.Model(&model.Comment{}).Where("user_id = ? AND status != ?", userID, model.CommentVertifyFail).
 		Count(&totalCount).Error; err != nil {
 		fmt.Println(err.Error())
@@ -112,9 +110,7 @@ func UserCommentList(c *gin.Context) {
 		sendErrJson("error", c)
 		return
 	}
-
 	var results []map[string]interface{}
-
 	for i := 0; i < len(comments); i++ {
 		data := make(map[string]interface{})
 
@@ -261,11 +257,8 @@ func SourceComments(c *gin.Context) {
 func Create(c *gin.Context) {
 	sendErrJson := common.SendErrJson
 	iUser, _ := c.Get("user")
-
 	user := iUser.(model.User)
-
 	RedisConn := model.RedisPool.Get()
-
 	defer RedisConn.Close()
 
 	minuteKey := model.CommentMinuteLimit + fmt.Sprintf("%d", user.ID)
@@ -289,16 +282,13 @@ func Create(c *gin.Context) {
 	}
 
 	dayKey := model.CommentDayLimit + fmt.Sprintf("%d", user.ID)
-
 	dayCount, dayErr := redis.Int64(RedisConn.Do("GET", dayKey))
-
 	if dayErr == nil && dayCount > model.CommentMinuteLimitCount {
 		sendErrJson("您今天的操作过于频繁,请先休息一会", c)
 		return
 	}
 
 	dayRemainingTime, _ := redis.Int64(RedisConn.Do("TTL", dayKey))
-
 	secondOfDay := int64(24 * 60 * 60)
 	if dayRemainingTime < 0 || dayRemainingTime > secondOfDay {
 		dayRemainingTime = secondOfDay
@@ -325,10 +315,8 @@ func Save(c *gin.Context, isEdit bool) {
 	sendErrJson := common.SendErrJson
 	var comment model.Comment
 	var parentComment model.Comment
-
 	iUser, _ := c.Get("user")
 	user := iUser.(model.User)
-
 	if user.Role == model.UserRoleCrawler {
 		sendErrJson("爬虫管理员不能回复", c)
 		return
@@ -342,7 +330,6 @@ func Save(c *gin.Context, isEdit bool) {
 
 	var article model.Article
 	var vote model.Vote
-
 	//不是重新编辑
 	if !isEdit {
 		if comment.SourceName != model.CommentSourceArticle && comment.SourceName != model.CommentSourceVote {
@@ -378,7 +365,6 @@ func Save(c *gin.Context, isEdit bool) {
 	}
 
 	comment.Content = strings.TrimSpace(comment.Content)
-
 	if comment.Content == "" {
 		sendErrJson("评论不能为空", c)
 		return
@@ -389,17 +375,13 @@ func Save(c *gin.Context, isEdit bool) {
 		sendErrJson(msg, c)
 		return
 	}
-
 	comment.Status = model.CommentVertifying //设置为校验评论的合法性
 	comment.UserID = user.ID
-
 	var updateComment model.Comment
 
 	if !isEdit {
 		comment.ContentType = model.ContentTypeMarkdown
-
 		tx := model.DB.Begin()
-
 		if err := tx.Create(&comment).Error; err != nil {
 			fmt.Println(err.Error())
 			tx.Rollback()
@@ -426,7 +408,6 @@ func Save(c *gin.Context, isEdit bool) {
 		}
 
 		var author model.User //文章作者
-
 		if comment.SourceName == model.CommentSourceArticle {
 			author.ID = article.UserID
 			articleMap := map[string]interface{}{
@@ -465,7 +446,6 @@ func Save(c *gin.Context, isEdit bool) {
 				sendErrJson("error", c)
 				return
 			}
-
 			authorScore := author.Score + model.ByCollectScore
 			if err := tx.Model(&author).Update("score", authorScore).Error; err != nil {
 				fmt.Println(err.Error())
@@ -527,7 +507,6 @@ func Save(c *gin.Context, isEdit bool) {
 	}
 
 	var commentJson model.Comment
-
 	if isEdit {
 		commentJson = updateComment
 	} else {
@@ -547,7 +526,6 @@ func Save(c *gin.Context, isEdit bool) {
 
 func Delete(c *gin.Context) {
 	sendErrJson := common.SendErrJson
-
 	id, idErr := strconv.Atoi(c.Param("id"))
 	if idErr != nil {
 		fmt.Println(idErr.Error())
@@ -556,7 +534,6 @@ func Delete(c *gin.Context) {
 	}
 
 	var comment model.Comment
-
 	if err := model.DB.First(&comment, id).Error; err != nil {
 		sendErrJson("无效的ID", c)
 		return
@@ -564,14 +541,12 @@ func Delete(c *gin.Context) {
 
 	iUser, _ := c.Get("user")
 	user := iUser.(model.User)
-
 	if comment.UserID != user.ID {
 		sendErrJson("您无权执行此操作", c)
 		return
 	}
 
 	tx := model.DB.Begin()
-
 	if err := tx.Delete(comment).Error; err != nil {
 		tx.Rollback()
 		sendErrJson("error", c)
@@ -582,7 +557,6 @@ func Delete(c *gin.Context) {
 	if comment.SourceName == model.CommentSourceArticle {
 		//对文章进行更新
 		var article model.Article
-
 		if err := tx.First(&article, comment.SourceID).Error; err != nil {
 			tx.Rollback()
 			sendErrJson("error", c)
@@ -592,7 +566,6 @@ func Delete(c *gin.Context) {
 		articleData := map[string]interface{}{
 			"comment_count": article.CommentCount - 1,
 		}
-
 		if article.LastUserID == user.ID {
 			articleData["last_user_id"] = 0
 		}
@@ -617,7 +590,6 @@ func Delete(c *gin.Context) {
 		if vote.LastUserID == user.ID {
 			voteData["last_user_id"] = 0
 		}
-
 		if err := tx.Model(&vote).Updates(voteData).Error; err != nil {
 			tx.Rollback()
 			sendErrJson("error", c)
@@ -630,13 +602,11 @@ func Delete(c *gin.Context) {
 		"comment_count": user.CommentCount - 1,
 		"score":         user.Score - model.CommentScore,
 	}
-
 	if err := tx.Model(&user).Updates(userMap).Error; err != nil {
 		tx.Rollback()
 		sendErrJson("error", c)
 		return
 	}
-
 	if err := model.UserToRedis(user); err != nil {
 		tx.Rollback()
 		sendErrJson("error", c)
@@ -644,7 +614,6 @@ func Delete(c *gin.Context) {
 	}
 
 	tx.Commit()
-
 	c.JSON(http.StatusOK, gin.H{
 		"errNo": model.ErrorCode.SUCCESS,
 		"msg":   "success",
@@ -659,7 +628,6 @@ func Comments(c *gin.Context) {
 	sendErrJson := common.SendErrJson
 	var startTime string
 	var endTime string
-
 	if startAt, err := strconv.Atoi(c.Query("startAt")); err != nil {
 		startTime = time.Unix(0, 0).Format("2006-01-02 15:04:05")
 	} else {
@@ -675,19 +643,15 @@ func Comments(c *gin.Context) {
 	var comments []model.Comment
 	var pageNo int
 	var pageNoErr error
-
 	if pageNo, pageNoErr = strconv.Atoi(c.Query("pageNo")); pageNoErr != nil {
 		pageNo = 1
 	}
-
 	if pageNo < 1 {
 		pageNo = 1
 	}
 
 	pageSize := model.PageSize
-
 	offset := (pageNo - 1) * pageSize
-
 	if err := model.DB.Where("created_at >= ? AND created_at < ?", startTime, endTime).Order("created_at DESC").
 		Offset(offset).Limit(pageSize).Find(comments).Error; err != nil {
 		fmt.Println(err.Error())
@@ -735,7 +699,6 @@ func UpdateStatus(c *gin.Context) {
 		sendErrJson("无效的ID", c)
 		return
 	}
-
 	if err := c.ShouldBindJSON(&reqData); err != nil {
 		sendErrJson("参数无效", c)
 		return
@@ -747,14 +710,12 @@ func UpdateStatus(c *gin.Context) {
 		sendErrJson("无效的ID", c)
 		return
 	}
-
 	if status != model.CommentVertifying && status != model.CommentVertifySuccess && status != model.CommentVertifyFail {
 		sendErrJson("无效的状态", c)
 		return
 	}
 
 	comment.Status = status
-
 	if err := model.DB.Model(&comment).Update("status", status).Error; err != nil {
 		fmt.Println(err.Error())
 		sendErrJson("error", c)

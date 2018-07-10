@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"os"
 	"io"
+	"gopractice/config"
+	"sync"
 )
 
 type CrawlSelector struct {
@@ -100,11 +102,11 @@ func CreateSourceHTML(from int) string {
 	case model.ArticleFromNull:
 		htmlArr = []string{}
 	}
-	return strings.Join(htmlArr,"")
+	return strings.Join(htmlArr, "")
 }
 
 func CrawContent(pageUrl string, crawlSelector CrawlSelector,
-	siteInfo map[string]string, isExist bool) map[string]interface{} {
+	siteInfo map[string]string, isExist bool) map[string]string {
 	var crawlArticle model.CrawlerArticle
 
 	if err := model.DB.Where("url = ?", pageUrl).Find(&crawlArticle).Error; err == nil {
@@ -249,7 +251,7 @@ func CrawContent(pageUrl string, crawlSelector CrawlSelector,
 
 	articleHtml += sourceHTML
 	articleHtml = "<div id=\"golang123-content-outter\">" + articleHtml + "</div>"
-	return map[string]interface{}{
+	return map[string]string{
 		"Title":   title,
 		"Content": articleHtml,
 		"URL":     pageUrl,
@@ -284,6 +286,235 @@ func CrawlNotSaveContent(c *gin.Context) {
 		"errNo": model.ErrorCode.SUCCESS,
 		"msg":   "success",
 		"data":  data,
+	})
+}
+
+//获取爬虫账户
+func CrawlAccount(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	var users []model.User
+	if err := model.DB.Where("name = ?", config.ServerConfig.CrawlerName).Find(&users).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("error", c)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "success",
+		"data": gin.H{
+			"users": users,
+		},
+	})
+}
+
+func createArticle(user model.User, category model.Category, from int, data map[string]string) {
+	var article model.Article
+	article.Name = data["Title"]
+	article.HTMLContent = data["Content"]
+	article.ContentType = model.ContentTypeHTML
+	article.UserID = user.ID
+	article.Status = model.ArticleVerifying
+	article.Categories = append(article.Categories, category)
+
+	var crawlArticle model.CrawlerArticle
+	crawlArticle.URL = data["URL"]
+	crawlArticle.Title = article.Name
+	crawlArticle.Content = article.HTMLContent
+	crawlArticle.From = from
+
+	tx := model.DB.Begin()
+	if err := tx.Create(&article).Error; err != nil {
+		tx.Rollback()
+		return
+	}
+
+	crawlArticle.ID = article.ID
+	if err := tx.Create(&crawlArticle).Error; err != nil {
+		tx.Rollback()
+		return
+	}
+	tx.Commit()
+}
+
+//爬取文章
+func CrawlList(listUrl string, user model.User, category model.Category, crawlSelector CrawlSelector, siteInfo map[string]string, crawlExist bool, wg *sync.WaitGroup) {
+	defer wg.Done()
+	if _, err := url.Parse(listUrl); err != nil {
+		return
+	}
+
+	doc, docErr := goquery.NewDocument(listUrl)
+	if docErr != nil {
+		fmt.Println(docErr.Error())
+		return
+	}
+
+	var articleURLArr []string
+	doc.Find(crawlSelector.ListItemSelector).Each(func(i int, selection *goquery.Selection) {
+		articleLink := selection.Find(crawlSelector.ListItemTitleSelector)
+		fmt.Println(selection.Html())
+		fmt.Println(articleLink.Html())
+		href, exists := articleLink.Attr("href")
+		if exists {
+			urlTemp, err := util.RelativeURLConvertAbsoluteURL(href, listUrl)
+			if err == nil {
+				articleURLArr = append(articleURLArr, urlTemp)
+			}
+		}
+	})
+
+	for i := 0; i < len(articleURLArr); i++ {
+		articleMap := CrawContent(articleURLArr[i], crawlSelector, siteInfo, crawlExist)
+		if articleMap != nil {
+			createArticle(user, category, crawlSelector.Form, articleMap)
+		}
+	}
+}
+
+//爬取文章
+func Crawl(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	type JSONData struct {
+		URLS       []string `json:"urls"`
+		From       int      `json:"from"`
+		CategoryID int      `json:"categoryId"`
+		Scope      string   `json:"scope"`
+		CrawlExist bool     `json:"crawlExist"`
+	}
+
+	var jsonData JSONData
+	if err := c.ShouldBindJSON(&jsonData); err != nil {
+		sendErrJson("参数无效", c)
+		return
+	}
+
+	if jsonData.From != model.ArticleFromJianShu && jsonData.From != model.ArticleFromZhihu && jsonData.From != model.ArticleFromHuXiu {
+		sendErrJson("无效的from", c)
+		return
+	}
+
+	if jsonData.Scope != model.CrawlerScopePage && jsonData.Scope != model.CrawlerScopeList {
+		sendErrJson("无效的scope", c)
+		return
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	if user.Name != config.ServerConfig.CrawlerName {
+		sendErrJson("您没有权限执行此操作,请使用爬虫账号", c)
+		return
+	}
+
+	var category model.Category
+	if err := model.DB.First(&category, jsonData.CategoryID).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("错误的categoryID", c)
+		return
+	}
+
+	crawlSelector := CreateCrawlSelector(jsonData.From)
+
+	if jsonData.Scope == model.CrawlerScopeList {
+		var wg sync.WaitGroup
+		for i := 0; i < len(jsonData.URLS); i++ {
+			wg.Add(1)
+			go CrawlList(jsonData.URLS[i], user, category, crawlSelector, nil, jsonData.CrawlExist, &wg)
+		}
+		wg.Wait()
+	} else {
+		for i := 0; i < len(jsonData.URLS); i++ {
+			data := CrawContent(jsonData.URLS[i], crawlSelector, nil, jsonData.CrawlExist)
+			if data != nil {
+				createArticle(user, category, jsonData.From, data)
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "抓取完成",
+		"data":  gin.H{},
+	})
+}
+
+func CustomCrawl(c *gin.Context) {
+	sendErrJson := common.SendErrJson
+	type JSONData struct {
+		URLS                  []string `json:"urls"`
+		From                  int      `json:"from"`
+		CategoryID            int      `json:"categoryId"`
+		Scope                 string   `json:"scope"`
+		CrawlExist            bool     `json:"crawlExist"`
+		ListItemSelector      string   `json:"listItemSelector"`
+		ListItemTitleSelector string   `json:"listItemTitleSelector"`
+		TitleSelector         string   `json:"titleSelector"`
+		ContentSelector       string   `json:"contentSelector"`
+		SiteURL               string   `json:"siteUrl" binding:"required,url"`
+		SiteName              string   `json:"siteName" binding:"required"`
+	}
+
+	var jsonData JSONData
+	if err := c.ShouldBindJSON(&jsonData); err != nil {
+		sendErrJson("参数无效", c)
+		return
+	}
+
+	if jsonData.From != model.ArticleFromCustom {
+		sendErrJson("无效的from", c)
+		return
+	}
+
+	if jsonData.Scope != model.CrawlerScopePage && jsonData.Scope != model.CrawlerScopeList {
+		sendErrJson("无效的scope", c)
+		return
+	}
+
+	iUser, _ := c.Get("user")
+	user := iUser.(model.User)
+
+	if user.Name != config.ServerConfig.CrawlerName {
+		sendErrJson("您没有权限执行此操作,请使用爬虫账号", c)
+		return
+	}
+
+	var category model.Category
+	if err := model.DB.First(&category, jsonData.CategoryID).Error; err != nil {
+		fmt.Println(err.Error())
+		sendErrJson("无效的categoryID", c)
+		return
+	}
+
+	crawlSelector := CreateCrawlSelector(jsonData.From)
+	crawlSelector.TitleSelector = jsonData.TitleSelector
+	crawlSelector.ListItemSelector = jsonData.ListItemSelector
+	crawlSelector.ListItemTitleSelector = jsonData.ListItemTitleSelector
+	crawlSelector.ContentSelector = jsonData.ContentSelector
+	siteInfo := map[string]string{
+		"siteURL":  jsonData.SiteURL,
+		"siteName": jsonData.SiteName,
+	}
+	if jsonData.Scope == model.CrawlerScopeList {
+		var wg sync.WaitGroup
+		for i := 0; i < len(jsonData.URLS); i++ {
+			wg.Add(1)
+			go CrawlList(jsonData.URLS[i], user, category, crawlSelector, siteInfo, jsonData.CrawlExist, &wg)
+		}
+		wg.Wait()
+	} else {
+		for i := 0; i < len(jsonData.URLS); i++ {
+			data := CrawContent(jsonData.URLS[i], crawlSelector, siteInfo, jsonData.CrawlExist)
+			if data != nil {
+				createArticle(user, category, jsonData.From, data)
+			}
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"errNo": model.ErrorCode.SUCCESS,
+		"msg":   "抓取完成",
+		"data":  gin.H{},
 	})
 
 }

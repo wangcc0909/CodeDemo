@@ -134,5 +134,9 @@ func Route(router *gin.Engine) {
 
 		adminAPI.GET("/comments",comment.Comments)
 		adminAPI.GET("/comments/status/update/:id",comment.UpdateStatus)
+
+		adminAPI.GET("/crawl/account",crawler.CrawlAccount)
+		adminAPI.POST("/crawl",crawler.Crawl)
+		adminAPI.POST("/customcrawl",crawler.CustomCrawl)
 	}
 }
