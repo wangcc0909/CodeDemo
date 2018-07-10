@@ -16,6 +16,7 @@ import (
 	"gopractice/cotroller/book"
 	"gopractice/cotroller/stats"
 	"gopractice/cotroller/keyvalueconfig"
+	"gopractice/cotroller/baidu"
 )
 
 //这里就是接口
@@ -139,5 +140,7 @@ func Route(router *gin.Engine) {
 		adminAPI.POST("/crawl",crawler.Crawl)
 		adminAPI.POST("/customcrawl",crawler.CustomCrawl)
 		adminAPI.POST("/crawl/account",crawler.CreateAccount)
+
+		adminAPI.POST("/pushBaiduLink",baidu.PushToBaidu)
 	}
 }
