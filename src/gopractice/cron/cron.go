@@ -14,9 +14,10 @@ func init() {
 }
 
 func New() *cron.Cron {
+	//定时器
 	c := cron.New()
 	for spec,cmd := range cronMap{
-		c.AddFunc(spec,cmd)
+		c.AddFunc(spec,cmd) //每天凌晨3点执行一次
 	}
 	return c
 }

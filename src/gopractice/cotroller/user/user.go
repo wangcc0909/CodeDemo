@@ -394,7 +394,7 @@ func Signin(c *gin.Context) {
 			return
 		}
 
-		c.SetCookie("token", tokenString, config.ServerConfig.TokenMaxAge, "", "", true, true)
+		c.SetCookie("token", tokenString, config.ServerConfig.TokenMaxAge, "/", "", true, true)
 
 		c.JSON(http.StatusOK, gin.H{
 			"errNo": model.ErrorCode.SUCCESS,

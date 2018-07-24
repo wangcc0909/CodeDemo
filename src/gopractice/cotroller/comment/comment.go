@@ -546,7 +546,7 @@ func Delete(c *gin.Context) {
 		return
 	}
 
-	tx := model.DB.Begin()
+	tx := model.DB.Begin()//开启事务  发生错误需要回滚事务  Rollback()
 	if err := tx.Delete(comment).Error; err != nil {
 		tx.Rollback()
 		sendErrJson("error", c)

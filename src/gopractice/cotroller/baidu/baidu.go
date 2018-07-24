@@ -21,7 +21,7 @@ func postToBaidu(urlStr string,data []byte) ([]byte,error) {
 		return []byte(""),err
 	}
 
-	request.Header.Set("Connection","Keep-Aline")
+	request.Header.Set("Connection","Keep-Alive")
 	var resp *http.Response
 	resp,err = http.DefaultClient.Do(request)
 	if err != nil {
