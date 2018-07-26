@@ -278,6 +278,7 @@ func ResetPassword(c *gin.Context) {
 		sendErrJson("重置链接已失效", c)
 		return
 	}
+	user.Pass = user.EntryPassword(userReqData.Password,user.Salt())
 
 	if user.ID <= 0 {
 		sendErrJson("重置链接已失效", c)
@@ -433,7 +434,7 @@ func Signup(c *gin.Context) {
 	userData.Email = strings.TrimSpace(userData.Email)
 	userData.Password = strings.TrimSpace(userData.Password)
 
-	if strings.Index(userData.Email, "@") != -1 {
+	if strings.Index(userData.Name, "@") != -1 {
 		sendErrJson("用户名中不能含有@", c)
 		return
 	}

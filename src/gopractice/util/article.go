@@ -2,7 +2,7 @@ package util
 
 import (
 	"github.com/microcosm-cc/bluemonday"
-	blackfriday "github.com/russross/blackfriday"
+	"github.com/russross/blackfriday"
 )
 
 //markdown to html
@@ -35,7 +35,7 @@ func MarkdownToHTML(md string) string {
 
 }
 
-//避免 Xss
+//避免 Xss攻击
 func AvoidXss(theHTML string) string {
 	return bluemonday.UGCPolicy().Sanitize(theHTML)
 }

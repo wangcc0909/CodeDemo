@@ -45,7 +45,7 @@ func SiteInfo(c *gin.Context) {
 		fmt.Println(err.Error())
 	}
 
-	err := json.Unmarshal([]byte(keyValueConfig.Value), &keyValueConfig)
+	err := json.Unmarshal([]byte(keyValueConfig.Value), &siteConfig)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
