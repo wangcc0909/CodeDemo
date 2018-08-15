@@ -6,7 +6,7 @@
 
     <meta charset="utf-8"/>
 
-    <title>go测试socket</title>
+    <title>go测试websocket</title>
 
 </head>
 
@@ -52,6 +52,15 @@
 
     };
 
+    //断开连接
+    function disconnect() {
+        if (sock != null) {
+            sock.close();
+            sock = null;
+            setConnected("已断开");
+        }
+    }
+
 </script>
 
 <h1>WebSocket Echo Test</h1>
@@ -67,6 +76,8 @@
 </form>
 
 <button onclick="connection();">connect</button>
+
+<button onclick="disconnect();">closed</button>
 
 <button onclick="send();">Send Message</button>
 
