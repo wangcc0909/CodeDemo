@@ -36,7 +36,10 @@ func main() {
 		goto ERR
 	}
 	//统计
-
+	if err = gateway.InitStats();err != nil {
+		fmt.Println(err)
+		goto ERR
+	}
 
 	ERR:
 		os.Exit(-1)

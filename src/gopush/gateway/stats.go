@@ -1,5 +1,10 @@
 package gateway
 
+import (
+	"sync/atomic"
+	"encoding/json"
+)
+
 type Stats struct {
 	//反馈在线长连接的数量
 	OnlineConnections int64 `json:"onlineConnections"`
@@ -20,4 +25,85 @@ type Stats struct {
 	MergerAllTotal  int64 `json:"mergerAllTotal"`
 	MergerRoomFail  int64 `json:"mergerRoomFail"`
 	MergerAllFail   int64 `json:"mergerAllFail"`
+}
+
+var (
+	G_stats *Stats
+)
+
+func InitStats() (err error) {
+	G_stats = &Stats{}
+	return
+}
+
+func DispatchPending_INCR() {
+	atomic.AddInt64(&G_stats.DispatchPending,1)
+}
+
+func DispatchPending_DESC() {
+	atomic.AddInt64(&G_stats.DispatchPending,-1)
+}
+
+func PushJobPending_INCR() {
+	atomic.AddInt64(&G_stats.PushJobPending,1)
+}
+
+func PushJobPending_DESC() {
+	atomic.AddInt64(&G_stats.PushJobPending,-1)
+}
+
+func OnlineConnections_INCR() {
+	atomic.AddInt64(&G_stats.OnlineConnections,1)
+}
+
+func OnlineConnections_DESC() {
+	atomic.AddInt64(&G_stats.OnlineConnections,-1)
+}
+
+func RoomCount_INCR() {
+	atomic.AddInt64(&G_stats.RoomCount,1)
+}
+
+func RoomCount_DESC() {
+	atomic.AddInt64(&G_stats.RoomCount,-1)
+}
+
+func MergerPending_INCR() {
+	atomic.AddInt64(&G_stats.MergerPending,1)
+}
+
+func MergerPending_DESC() {
+	atomic.AddInt64(&G_stats.MergerPending,-1)
+}
+
+func SendMessageTotal_INCR() {
+	atomic.AddInt64(&G_stats.SendMessageTotal,1)
+}
+
+func SendMessageFail_INCR() {
+	atomic.AddInt64(&G_stats.SendMessageFail,1)
+}
+
+func DispatchFail_INCR() {
+	atomic.AddInt64(&G_stats.DispatchFail,1)
+}
+
+func MergerRoomTotal_INCR(batchSize int64) {
+	atomic.AddInt64(&G_stats.MergerRoomTotal,batchSize)
+}
+
+func MergerAllTotal_INCR(batchSize int64) {
+	atomic.AddInt64(&G_stats.MergerAllTotal,batchSize)
+}
+
+func MergerRoomFail_INCR(batchSize int64) {
+	atomic.AddInt64(&G_stats.MergerRoomFail,batchSize)
+}
+
+func MergerAllFail_INCR(batchSize int64) {
+	atomic.AddInt64(&G_stats.MergerAllFail,batchSize)
+}
+
+func (stats *Stats) Dump() (data []byte,err error) {
+	return json.Marshal(G_stats)
 }
