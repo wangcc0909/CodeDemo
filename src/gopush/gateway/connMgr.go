@@ -97,3 +97,25 @@ func InitConnMgr() (err error) {
 	G_connMgr = connMgr
 	return
 }
+
+func (connMgr *ConnMgr) AddConn(wsConn *WSConnection) {
+
+}
+
+func (connMgr *ConnMgr) DelConn(wsConn *WSConnection) {
+
+}
+
+func (connMgr *ConnMgr) JoinRoom(roomId string) error {
+	var (
+		err error
+	)
+	return err
+}
+
+func (connMgr *ConnMgr) LeaveRoom(roomId string,wsConn *WSConnection) error {
+	var (
+		err error
+	)
+	return err
+}

@@ -7,6 +7,7 @@ import (
 	"time"
 	"strconv"
 	"sync/atomic"
+	"fmt"
 )
 
 type WSServer struct {
@@ -63,6 +64,7 @@ func InitWsServer() (err error) {
 
 	//监听端口
 	if listener,err = net.Listen("tcp",":" + strconv.Itoa(G_config.WsPort));err != nil {
+		fmt.Println(err)
 		return
 	}
 

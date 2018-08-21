@@ -17,6 +17,18 @@ type WSMessage struct {
 	MsgData []byte
 }
 
+type BizPongData struct {
+
+}
+
+type BizJoinData struct {
+	Room string `json:"room"`
+}
+
+type BizLeaveData struct {
+	Room string `json:"room"`
+}
+
 //业务消息的固定格式 (type+data)
 type BizMessage struct {
 	Type string          `json:"type"` //type 消息类型 Ping Pong Join Leave Push
@@ -40,10 +52,22 @@ func EncodeWsMessage(message *BizMessage) (wsMsg *WSMessage, err error) {
 	return
 }
 
+func DecodeBizMessage(data []byte) (bizMsg *BizMessage, err error) {
+	var (
+		bizMsgObj BizMessage
+	)
+
+	if err = json.Unmarshal(data, &bizMsgObj); err != nil {
+		return
+	}
+	bizMsg = &bizMsgObj
+	return
+}
+
 func BuildMessage(msgType int, data []byte) (wsMsg *WSMessage) {
 	wsMsg = &WSMessage{
-		MsgType:msgType,
-		MsgData:data,
+		MsgType: msgType,
+		MsgData: data,
 	}
 	return
 }

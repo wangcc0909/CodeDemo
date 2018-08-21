@@ -101,6 +101,7 @@ ERR:
 CLOSED:
 }
 
+//关闭连接
 func (wsConn *WSConnection) Closed() {
 	wsConn.wsSocket.Close()
 
@@ -110,4 +111,26 @@ func (wsConn *WSConnection) Closed() {
 		wsConn.isClosed = true
 		close(wsConn.closeChan)
 	}
+}
+
+//检测心跳(不要太频繁)
+func (wsConn *WSConnection) isAlive() bool {
+	var (
+		now = time.Now()
+	)
+	wsConn.mutex.Lock()
+	defer wsConn.mutex.Unlock()
+	if wsConn.isClosed || now.Sub(wsConn.lastHeartbeatTime) > time.Duration(G_config.WsHeartbeatInternal)*time.Microsecond {
+		return false
+	}
+	return true
+}
+
+func (wsConn *WSConnection) keepAlive()  {
+	var (
+		now = time.Now()
+	)
+	wsConn.mutex.Lock()
+	defer wsConn.mutex.Unlock()
+	wsConn.lastHeartbeatTime = now
 }
