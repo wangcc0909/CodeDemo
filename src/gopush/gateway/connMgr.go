@@ -98,24 +98,46 @@ func InitConnMgr() (err error) {
 	return
 }
 
-func (connMgr *ConnMgr) AddConn(wsConn *WSConnection) {
+// 这里取出bucket的方式不懂, 猜是随机取个桶  让这个桶去处理业务
+func (connMgr *ConnMgr) GetBucket(wsConn *WSConnection) (bucket *Bucket) {
+	bucket = connMgr.Buckets[wsConn.curConnId % uint64(len(connMgr.Buckets))]
+	return
+}
 
+func (connMgr *ConnMgr) AddConn(wsConn *WSConnection) {
+	var (
+		bucket *Bucket
+	)
+	bucket = connMgr.GetBucket(wsConn)
+	bucket.AddConn(wsConn)
+	OnlineConnections_INCR()
 }
 
 func (connMgr *ConnMgr) DelConn(wsConn *WSConnection) {
-
+	var (
+		bucket *Bucket
+	)
+	bucket = connMgr.GetBucket(wsConn)
+	bucket.DelConn(wsConn)
+	OnlineConnections_DESC()
 }
 
-func (connMgr *ConnMgr) JoinRoom(roomId string) error {
+func (connMgr *ConnMgr) JoinRoom(roomId string,wsConn *WSConnection) error {
 	var (
+		bucket *Bucket
 		err error
 	)
+	bucket = connMgr.GetBucket(wsConn)
+	err = bucket.JoinRoom(roomId,wsConn)
 	return err
 }
 
 func (connMgr *ConnMgr) LeaveRoom(roomId string,wsConn *WSConnection) error {
 	var (
+		bucket *Bucket
 		err error
 	)
+	bucket = connMgr.GetBucket(wsConn)
+	err = bucket.LeaveRoom(roomId,wsConn)
 	return err
 }

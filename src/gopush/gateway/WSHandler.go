@@ -56,7 +56,7 @@ func (wsConn *WSConnection) handleLeave(bizReq *common.BizMessage) (bizResp *com
 	}
 	//判断是否在房间中
 	if exists = wsConn.rooms[bizLeaveData.Room];!exists {
-		err = common.ERR_LEAVE_ROOM
+		err = common.ERR_LEAVE_ROOM_UNEXIST
 		return
 	}
 	//从连接池中移除
@@ -95,7 +95,7 @@ func (wsConn *WSConnection) handleJoin(bizReq *common.BizMessage) (bizResp *comm
 		return
 	}
 	//建立和房间的联系
-	if err = G_connMgr.JoinRoom(bizJoinData.Room);err != nil {
+	if err = G_connMgr.JoinRoom(bizJoinData.Room,wsConn);err != nil {
 		return
 	}
 	//建立和房间的联系
