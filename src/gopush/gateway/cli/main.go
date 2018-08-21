@@ -45,6 +45,11 @@ func main() {
 		fmt.Println(err)
 		goto ERR
 	}
+	//初始化websocket服务器
+	if err = gateway.InitWsServer();err != nil {
+		fmt.Println(err)
+		goto ERR
+	}
 
 	fmt.Println("运行")
 	ERR:

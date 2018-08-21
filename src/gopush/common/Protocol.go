@@ -39,3 +39,11 @@ func EncodeWsMessage(message *BizMessage) (wsMsg *WSMessage, err error) {
 	}
 	return
 }
+
+func BuildMessage(msgType int, data []byte) (wsMsg *WSMessage) {
+	wsMsg = &WSMessage{
+		MsgType:msgType,
+		MsgData:data,
+	}
+	return
+}

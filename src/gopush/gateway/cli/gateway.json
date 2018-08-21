@@ -1,6 +1,6 @@
 {
   "websocket监听端口": "使用nginx做转发",
-  "wsPort": ":7777",
+  "wsPort": 7777,
   "websocket http握手读超时": "单位毫秒",
   "wsReadTimeout": 2000,
   "websocket http握手写超时": "单位毫秒",

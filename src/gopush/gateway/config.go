@@ -6,7 +6,7 @@ import (
 )
 
 type Config struct {
-	WsPort               string `json:"wsPort"`
+	WsPort               int    `json:"wsPort"`
 	WsReadTimeout        int    `json:"wsReadTimeout"`
 	WsWriteTimeout       int    `json:"wsWriteTimeout"`
 	WsInChannelSize      int    `json:"wsInChannelSize"`
