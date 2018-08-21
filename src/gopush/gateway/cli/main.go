@@ -40,7 +40,13 @@ func main() {
 		fmt.Println(err)
 		goto ERR
 	}
+	//初始化连接管理器
+	if err = gateway.InitConnMgr();err != nil {
+		fmt.Println(err)
+		goto ERR
+	}
 
+	fmt.Println("运行")
 	ERR:
 		os.Exit(-1)
 }
