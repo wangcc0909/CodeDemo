@@ -12,7 +12,14 @@ type Room struct {
 }
 
 func (room *Room) Push(wsMgr *common.WSMessage) {
-
+	var (
+		wsConn *WSConnection
+	)
+	room.rwMutex.Lock()
+	defer room.rwMutex.Unlock()
+	for _,wsConn = range room.id2Conn {
+		wsConn.SendMessage(wsMgr)
+	}
 }
 
 func InitRoom(roomId string) *Room {
