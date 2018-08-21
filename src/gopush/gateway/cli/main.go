@@ -51,6 +51,12 @@ func main() {
 		goto ERR
 	}
 
+	//初始化merger合并层
+	if err = gateway.InitMerger();err != nil {
+		fmt.Println(err)
+		goto ERR
+	}
+
 	fmt.Println("运行")
 	ERR:
 		os.Exit(-1)

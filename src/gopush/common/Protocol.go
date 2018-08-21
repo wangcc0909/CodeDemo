@@ -29,6 +29,11 @@ type BizLeaveData struct {
 	Room string `json:"room"`
 }
 
+//push
+type BizPushData struct {
+	Items []*json.RawMessage `json:"items"`
+} 
+
 //业务消息的固定格式 (type+data)
 type BizMessage struct {
 	Type string          `json:"type"` //type 消息类型 Ping Pong Join Leave Push

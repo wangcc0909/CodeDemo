@@ -100,7 +100,7 @@ func InitConnMgr() (err error) {
 
 // 这里取出bucket的方式不懂, 猜是随机取个桶  让这个桶去处理业务
 func (connMgr *ConnMgr) GetBucket(wsConn *WSConnection) (bucket *Bucket) {
-	bucket = connMgr.Buckets[wsConn.curConnId % uint64(len(connMgr.Buckets))]
+	bucket = connMgr.Buckets[wsConn.curConnId%uint64(len(connMgr.Buckets))]
 	return
 }
 
@@ -122,22 +122,61 @@ func (connMgr *ConnMgr) DelConn(wsConn *WSConnection) {
 	OnlineConnections_DESC()
 }
 
-func (connMgr *ConnMgr) JoinRoom(roomId string,wsConn *WSConnection) error {
+func (connMgr *ConnMgr) JoinRoom(roomId string, wsConn *WSConnection) error {
 	var (
 		bucket *Bucket
-		err error
+		err    error
 	)
 	bucket = connMgr.GetBucket(wsConn)
-	err = bucket.JoinRoom(roomId,wsConn)
+	err = bucket.JoinRoom(roomId, wsConn)
 	return err
 }
 
-func (connMgr *ConnMgr) LeaveRoom(roomId string,wsConn *WSConnection) error {
+func (connMgr *ConnMgr) LeaveRoom(roomId string, wsConn *WSConnection) error {
 	var (
 		bucket *Bucket
-		err error
+		err    error
 	)
 	bucket = connMgr.GetBucket(wsConn)
-	err = bucket.LeaveRoom(roomId,wsConn)
+	err = bucket.LeaveRoom(roomId, wsConn)
+	return err
+}
+
+func (connMgr *ConnMgr) PushAll(message *common.BizMessage) error {
+	var (
+		err     error
+		pushJob *PushJob
+	)
+	pushJob = &PushJob{
+		PushType: common.TYPE_PUSH_ALL,
+		BizMgr:   message,
+	}
+	select {
+	case connMgr.DispatchChan <- pushJob:
+		DispatchPending_INCR()
+	default:
+		err = common.ERR_DISPATCH_CHANNEL_FULL
+		DispatchFail_INCR()
+	}
+	return err
+}
+
+func (connMgr *ConnMgr) PushRoom(roomId string, message *common.BizMessage) error {
+	var (
+		err error
+		pushJob *PushJob
+	)
+	pushJob = &PushJob{
+		PushType: common.TYPE_PUSH_ROOM,
+		BizMgr:   message,
+		RoomID:roomId,
+	}
+	select {
+	case connMgr.DispatchChan <- pushJob:
+		DispatchPending_INCR()
+	default:
+		err = common.ERR_DISPATCH_CHANNEL_FULL
+		DispatchFail_INCR()
+	}
 	return err
 }

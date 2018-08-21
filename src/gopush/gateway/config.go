@@ -15,7 +15,7 @@ type Config struct {
 	MaxMergerDelay       int    `json:"maxMergerDelay"`
 	MaxMergerBatchSize   int    `json:"maxMergerBatchSize"`
 	MergerWorkerCount    int    `json:"mergerWorkerCount"`
-	MaxChannelSize       int    `json:"maxChannelSize"`
+	MergerChannelSize    int    `json:"mergerChannelSize"`
 	ServerPort           int    `json:"serverPort"`
 	ServerReadTimeout    int    `json:"serverReadTimeout"`
 	ServerWriteTimeout   int    `json:"serverWriteTimeout"`
