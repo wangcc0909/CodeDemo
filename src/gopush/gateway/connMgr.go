@@ -142,6 +142,7 @@ func (connMgr *ConnMgr) LeaveRoom(roomId string, wsConn *WSConnection) error {
 	return err
 }
 
+//向在线人员推送
 func (connMgr *ConnMgr) PushAll(message *common.BizMessage) error {
 	var (
 		err     error
@@ -161,6 +162,7 @@ func (connMgr *ConnMgr) PushAll(message *common.BizMessage) error {
 	return err
 }
 
+//向指定房间推送
 func (connMgr *ConnMgr) PushRoom(roomId string, message *common.BizMessage) error {
 	var (
 		err error

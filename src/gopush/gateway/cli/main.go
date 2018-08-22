@@ -6,6 +6,7 @@ import (
 	"gopush/gateway"
 	"os"
 	"fmt"
+	"time"
 )
 
 var (
@@ -57,7 +58,19 @@ func main() {
 		goto ERR
 	}
 
+	//初始化service接口
+	if err = gateway.InitService();err != nil {
+		fmt.Println(err)
+		goto ERR
+	}
+
 	fmt.Println("运行")
+
+	//主协程不能终止
+	for {
+		time.Sleep(1 * time.Second)
+	}
+
 	ERR:
 		os.Exit(-1)
 }
