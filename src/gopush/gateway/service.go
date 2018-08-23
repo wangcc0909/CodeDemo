@@ -30,6 +30,7 @@ func handlerPushAll(w http.ResponseWriter, r *http.Request) {
 	)
 
 	if err = r.ParseForm(); err != nil {
+		fmt.Println(err)
 		return
 	}
 
@@ -53,11 +54,13 @@ func handlerPushRoom(w http.ResponseWriter, r *http.Request) {
 		msgIdx int
 	)
 	if err = r.ParseForm(); err != nil {
+		fmt.Println(err)
 		return
 	}
 
 	room = r.PostForm.Get("room")
 	items = r.PostForm.Get("items")
+	fmt.Println(items)
 
 	if utf8.RuneCountInString(room) <= 0 || room == "" {
 		return
