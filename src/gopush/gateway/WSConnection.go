@@ -86,6 +86,7 @@ func (wsConn *WSConnection) writeLoop() {
 		wsMsg *common.WSMessage
 		err   error
 	)
+
 	for {
 		select {
 		case wsMsg = <-wsConn.outChan:

@@ -7,6 +7,7 @@ import (
 	"time"
 	"golang.org/x/net/http2"
 	"net/url"
+	"fmt"
 )
 
 type GateConn struct {
@@ -53,6 +54,7 @@ func (gateConn *GateConn) PushAll(itemJson []byte) (err error) {
 	from.Set("items", string(itemJson))
 	for retry = 0; retry < G_config.GatewayPushRetry; retry++ {
 		if response, err = gateConn.client.PostForm(apiUrl, from); err != nil {
+			fmt.Println(err)
 			PushFail_INCR()
 			continue
 		}

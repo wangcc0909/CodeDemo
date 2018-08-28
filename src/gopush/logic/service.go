@@ -63,6 +63,7 @@ func handlePushRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	log.Println("room :",room," = ",items)
 	if err = json.Unmarshal([]byte(items), &msgArr); err != nil {
 		fmt.Println(err)
 		return

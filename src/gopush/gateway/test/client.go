@@ -18,6 +18,8 @@ func loop() {
 		if err != nil {
 			continue
 		}
+
+		c.WriteMessage(websocket.TextMessage,[]byte(string("{\"type\": \"JOIN\", \"data\": {\"room\":\"default\"}}")))
 		//循环读消息
 		for {
 			_,data,err :=c.ReadMessage()

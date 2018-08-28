@@ -10,6 +10,7 @@ import (
 	"time"
 	"encoding/json"
 	"unicode/utf8"
+	"log"
 )
 
 type Service struct {
@@ -35,6 +36,7 @@ func handlerPushAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	items = r.PostForm.Get("items")
+	log.Println(items)
 	if err = json.Unmarshal([]byte(items), &msgArr); err != nil {
 		fmt.Println(err)
 		return
@@ -60,7 +62,7 @@ func handlerPushRoom(w http.ResponseWriter, r *http.Request) {
 
 	room = r.PostForm.Get("room")
 	items = r.PostForm.Get("items")
-	fmt.Println(items)
+	log.Println(room, " = ", items)
 
 	if utf8.RuneCountInString(room) <= 0 || room == "" {
 		return

@@ -3,6 +3,7 @@ package gateway
 import (
 	"sync"
 	"gopush/common"
+	"log"
 )
 
 type Bucket struct {
@@ -44,7 +45,7 @@ func (bucket *Bucket) PushRoom(roomId string,wsMsg *common.WSMessage) {
 	bucket.rwMutex.Lock()
 	room,existed = bucket.rooms[roomId]
 	bucket.rwMutex.Unlock()
-
+	log.Println("是否存在房间 = ",existed)
 	if !existed {
 		return
 	}
