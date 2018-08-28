@@ -8,7 +8,7 @@
   "网关列表": "推送将分发给所有网关",
   "gatewayList": [
     {
-      "hostname": "localhost",
+      "hostname": "127.0.0.1",
       "port": 7788
     }
   ],
