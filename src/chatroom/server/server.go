@@ -106,7 +106,7 @@ func HandleConn(conn net.Conn) {
 }
 
 func main() {
-	listener, err := net.Listen("tcp", "127.0.0.1:8000")
+	listener, err := net.Listen("tcp", "127.0.0.1:8080")
 	if err != nil {
 		fmt.Println("net.Listen err:", err)
 		return
