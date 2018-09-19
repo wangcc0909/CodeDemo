@@ -19,7 +19,7 @@ func main() {
 }
 
 func handle(w http.ResponseWriter, r *http.Request) {
-	qr,err := qrcode.Encode("我是王冲冲",qrcode.Highest,256)
+	qr,err := qrcode.Encode("今天周三",qrcode.Highest,256)
 	if err != nil {
 		log.Panic(err)
 		w.Write([]byte("err"))
