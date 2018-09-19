@@ -220,7 +220,6 @@ func CrawContent(pageUrl string, crawlSelector CrawlSelector,
 			}
 
 			img.SetAttr("src", imageUploadInfo.ImgUrl)
-
 		})
 	}
 
