@@ -5,10 +5,7 @@ import (
 	"github.com/skip2/go-qrcode"
 	"log"
 	"net/url"
-	"github.com/PuerkitoBio/goquery"
-	"fmt"
-	"encoding/json"
-	"time"
+	"io/ioutil"
 )
 
 func main() {
@@ -28,35 +25,27 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	w.Write(qr)
 }
 
+//1.获取歌曲名和演唱者
+// 2.将演唱者和歌曲名以参数的形式替换ur中的keyword,获取FileHash
+// 3.FileHash就是 一下注释url中的hash参数
+var ur = "http://songsearch.kugou.com/song_search_v2?callback=jQuery1124006980366032059648_1518578518932&keyword=%E5%88%9A%E5%88%9A%E5%A5%BD&page=1&pagesize=30&userid=-1&clientver=&platform=WebFilter&tag=em&filter=2&iscorrection=1&privilege_filter=0&_=1518578518934"
+//http://www.kugou.com/yy/index.php?r=play/getdata&hash=8E5DDAC9C06A6469ED500F18985D56D6
 func handleCrawel(w http.ResponseWriter, r *http.Request)  {
-	_,err := url.Parse("https://www.tianapi.com/")
+	_,err := url.Parse(ur)
 	if err != nil {
 		log.Panic(err)
 		return
 	}
-	resp,err := http.Get("https://www.tianapi.com/")
+	resp,err := http.Get(ur)
 	if err != nil {
 		log.Panic(err)
 		return
 	}
-	log.Println(resp.Body)
 	defer resp.Body.Close()
-	document,err := goquery.NewDocumentFromReader(resp.Body)
+	result,err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		log.Panic(err)
-		return
 	}
-	var datas = make(map[string]interface{})
-	document.Find("li a").Each(func(i int, selection *goquery.Selection) {
-		fmt.Println(selection.Text())
-		datas[selection.Text()] = selection.Text()
-	})
-	time.Sleep(5 * time.Second)
-	var result []byte
-	result,err = json.Marshal(datas)
-	if err != nil {
-		log.Panic(err)
-		return
-	}
+	log.Println(string(result))
 	w.Write(result)
 }
