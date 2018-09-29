@@ -1,0 +1,21 @@
+{
+  "database": {
+    "Dialect": "mysql",
+    "Database": "tarsier",
+    "User": "root",
+    "Password": "123456",
+    "Charset": "utf8mb4",
+    "Host": "192.168.99.100",
+    "Port": 3306,
+    "MaxIdleConns": 5,
+    "MaxOpenConns": 10
+  },
+  "go": {
+    "SiteName": "tarsier",
+    "Env": "development",
+    "LogDir": "",
+    "LogFile":"",
+    "MaxMultipartMemory": 3,
+    "Port":8080
+  }
+}
