@@ -13,24 +13,50 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"song/db"
 	"strconv"
+	"sync"
 )
 
-func CrawlerKouGou(c *gin.Context) {
-	type ReqData struct {
-		Url string `json:"url"`
-	}
-	var reqData ReqData
-
-	err := c.ShouldBindJSON(&reqData)
+var url = "http://www.kugou.com/yy/html/rank.html?from=homepage"
+func CrawlerKouGouWithoutUrl(c *gin.Context) {
+	resp,err := http.Get(url)
 	if err != nil {
+		fmt.Println(err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"code": 1,
-			"msg":  "参数错误",
+			"msg":  "系统内部错误",
 			"data": gin.H{},
 		})
+		return
 	}
+	defer resp.Body.Close()
+	document,err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"code": 2,
+			"msg":  "获取资源失败",
+			"data": gin.H{},
+		})
+		return
+	}
+	var wg sync.WaitGroup
+	document.Find(".pc_temp_side").Find("ul").Find("a").Each(func(i int, selection *goquery.Selection) {
+		a,_ := selection.Attr("href")
+		wg.Add(1)
+		go CrawlerKouGou(a,&wg)
+	})
+	wg.Wait()
 
-	resp, err := http.Get(reqData.Url)
+	c.JSON(http.StatusCreated, gin.H{
+		"code": 0,
+		"msg":  "success",
+		"data": gin.H{},
+	})
+}
+
+func CrawlerKouGou(url string,wg *sync.WaitGroup) {
+	defer wg.Done()
+	resp, err := http.Get(url)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -43,6 +69,7 @@ func CrawlerKouGou(c *gin.Context) {
 	}
 
 	var results []model.Song
+	//class= pc_temp_side 下所有li标签
 
 	document.Find(".pc_temp_songname").Each(func(i int, selection *goquery.Selection) {
 		songUri := handleUri(selection.Text())
@@ -57,12 +84,6 @@ func CrawlerKouGou(c *gin.Context) {
 			return
 		}
 		results = append(results, data)
-	})
-
-	c.JSON(http.StatusCreated, gin.H{
-		"code": 0,
-		"msg":  "success",
-		"data": results,
 	})
 }
 

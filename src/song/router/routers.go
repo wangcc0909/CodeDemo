@@ -10,8 +10,8 @@ func Routers(route *gin.Engine) {
 	apiPrefix := "/api"
 	app := route.Group(apiPrefix)
 	{
-		app.POST("/crawler",crawler.CrawlerKouGou)
 		app.GET("/list",song.List)
+		app.GET("/crawler",crawler.CrawlerKouGouWithoutUrl)
 	}
 
 }

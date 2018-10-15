@@ -18,27 +18,27 @@ func SetStructByJson(obj interface{}, mapData map[string]interface{}) error {
 
 //这里主要是判断obj的字段类型和value值匹配
 func setFiled(obj interface{}, key string, value interface{}) error {
-	struckData := reflect.ValueOf(obj).Elem()
-	filedValue := struckData.FieldByName(key) //这里获取obj的属性
-	if !filedValue.IsValid() {
-		return fmt.Errorf("util.setFiled() no such filed: %s in obj ", key)
+	structData := reflect.ValueOf(obj).Elem()
+	fieldValue := structData.FieldByName(key)
+
+	if !fieldValue.IsValid() {
+		return fmt.Errorf("utils.setField() No such field: %s in obj ", key)
 	}
 
-	if !filedValue.CanSet() {
-		return fmt.Errorf("cannot set %s filed value ", key)
+	if !fieldValue.CanSet() {
+		return fmt.Errorf("Cannot set %s field value ", key)
 	}
 
-	filedType := filedValue.Type()
-	val := reflect.ValueOf(value)
-	valTypeStr := val.Type().String()
-	filedTypeStr := filedType.String()
+	fieldType := fieldValue.Type()
+	val       := reflect.ValueOf(value)
 
-	if valTypeStr == "float64" && filedTypeStr == "int" {
-		val.Convert(filedType)
-	} else if filedType != val.Type() {
-		return fmt.Errorf("provide filed type %v didn't match obj filed type %v", valTypeStr, filedType)
+	valTypeStr   := val.Type().String()
+	fieldTypeStr := fieldType.String()
+	if valTypeStr == "float64" && fieldTypeStr == "int" {
+		val = val.Convert(fieldType)
+	} else if fieldType != val.Type() {
+		return fmt.Errorf("Provided value type " + valTypeStr + " didn't match obj field type " + fieldTypeStr)
 	}
-
-	filedValue.Set(val)
+	fieldValue.Set(val)
 	return nil
 }

@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>组件</title>
+    <script src="vue.js"></script>
+</head>
+<body>
+<div id="root">
+    <span v-bind:title="message">鼠标悬停几秒</span><br>
+    <p v-if="seen">你现在看到我了</p>
+    <input v-model="inputValue">
+    <button @click="handleClick">提交</button>
+    <ol>
+        <item-go v-for="(item,index) of list" v-bind:content="item"></item-go>
+    </ol>
+</div>
+
+<script>
+
+    Vue.component('item-go',{
+        props:['content'],
+        template:'<li>{{content}}</li>'
+    });
+
+    var root = new Vue({
+        el:"#root",
+        data:{
+            seen:true,
+            message:'北京时间 ' + new Date().toLocaleString(),
+            inputValue:'',
+            list:[]
+        },
+        methods:{
+            handleClick: function () {
+                this.list.push(this.inputValue)
+                this.inputValue = ''
+            }
+        }
+    })
+</script>
+</body>
+</html>

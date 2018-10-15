@@ -21,7 +21,8 @@ func main() {
 	http.ListenAndServe(":8080",nil)
 }
 
-var urlString = "http://www.kugou.com/yy/rank/home/1-6666.html?from=rank"
+//var urlString = "http://www.kugou.com/yy/rank/home/1-6666.html?from=rank"
+var urlString = "http://www.kugou.com/yy/rank/home/1-6666.html?from=homepage"
 func handle(w http.ResponseWriter, r *http.Request) {
 	resp,err := http.Get(urlString)
 	if err != nil {
@@ -35,10 +36,40 @@ func handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	document.Find(".pc_temp_side li").Each(func(i int, selection *goquery.Selection) {
+		a := selection.Find("a")
+		h,_ := a.Attr("href")
+		err := crawlerUrl(h)
+		if err != nil {
+			return
+		}
+	})
+
+	/*document.Find(".pc_temp_songname").Each(func(i int, selection *goquery.Selection) {
+		songUri := handleUri(selection.Text())
+		go crawleSong(songUri)
+	})*/
+	w.Write([]byte("success"))
+}
+
+func crawlerUrl(url string) error {
+	resp,err := http.Get(url)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	defer resp.Body.Close()
+	document,err := goquery.NewDocumentFromReader(resp.Body)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
 	document.Find(".pc_temp_songname").Each(func(i int, selection *goquery.Selection) {
 		songUri := handleUri(selection.Text())
 		go crawleSong(songUri)
 	})
+	return nil
 }
 
 func handleUri(u string) string {
