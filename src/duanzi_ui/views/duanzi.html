@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>今日精选段子</title>
+
+</head>
+
+<body>
+
+<div>
+{{range .list}}
+    <div class="dz">
+        <h3 class="biaoti">{{.Title}}</h3>
+        <p>{{str2html .Content}}</p>
+        <hr>
+    </div>
+{{end}}
+</div>
+
+</body>
+</html>

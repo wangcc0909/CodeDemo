@@ -1,0 +1,7 @@
+.dz{
+    width: 500px;
+    float: left;
+}
+.dz > .biaoti{
+    color: #00CDCD;
+}
