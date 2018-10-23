@@ -1,16 +1,14 @@
 package main
 
 import (
-	"fmt"
-	"net/http"
 	"io"
+	"fmt"
 	"regexp"
 	"strings"
-	"strconv"
-	"os"
+	"net/http"
+	"github.com/globalsign/mgo/bson"
+	"crawler_duanzi/model"
 )
-
-//https://www.pengfu.com/xiaohua_3.html
 
 func httpGet(url string) (result string, err error) {
 	resp, err1 := http.Get(url)
@@ -67,6 +65,7 @@ func CrawlerOne(url string) (title, content string, err error) {
 	return title, content, nil
 }
 
+
 //<h1 class="dp-b"><a href="https://www.pengfu.com/content_1835036_1.html" target="_blank">多人正在等车</a>
 func CrawlerPage(i int, page chan int) {
 	url := "https://www.pengfu.com/xiaohua_" + fmt.Sprintf("%d", i) + ".html"
@@ -76,7 +75,7 @@ func CrawlerPage(i int, page chan int) {
 		page <- i
 		return
 	}
-	fileName := strconv.Itoa(i) + ".txt"
+	/*fileName := strconv.Itoa(i) + ".txt"
 	file,err := os.Create(fileName)
 	if err != nil {
 		fmt.Println(err)
@@ -84,7 +83,7 @@ func CrawlerPage(i int, page chan int) {
 	}
 
 	defer file.Close()
-
+*/
 	reg := regexp.MustCompile(`<h1 class="dp-b"><a href="(.*)" target="_blank">`)
 	temp := reg.FindAllStringSubmatch(result, -1)
 	for _, content := range temp {
@@ -94,9 +93,15 @@ func CrawlerPage(i int, page chan int) {
 			continue
 		}
 
-		file.Write([]byte(title+ "\r\n"))
+		var DZ = model.Duanzi{
+			Title:title,
+			Content:joyContent,
+		}
+		DZ.Id = bson.NewObjectId()
+		model.InsertDuanzi(DZ)
+		/*file.Write([]byte(title+ "\r\n"))
 		file.Write([]byte(joyContent + "\r\n"))
-		file.Write([]byte("================================\r\n"))
+		file.Write([]byte("================================\r\n"))*/
 	}
 
 	page <- i

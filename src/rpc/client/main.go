@@ -17,7 +17,7 @@ func main() {
 	client := jsonrpc.NewClient(conn)
 
 	var reply float64
-	err = client.Call("JsonServer.Div", rpcdemo.Args{X: 1, Y: 0}, &reply)
+	err = client.Call("JsonServer.Div", rpcdemo.Args{X: 1, Y: 1}, &reply)
 	if err != nil {
 		log.Printf("err : %v", err)
 	} else {
