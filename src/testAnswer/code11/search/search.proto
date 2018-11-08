@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package search;
+
+service SearchService {
+    rpc Search(stream Request) returns (stream Response) {}
+}
+
+message Request{
+    string input = 1;
+}
+
+message Response {
+    string outpout = 1;
+}
