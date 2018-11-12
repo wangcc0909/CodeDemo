@@ -1,0 +1,27 @@
+syntax = "proto3";
+package order;
+
+service Order {
+    rpc CreateOrder (Request) returns (Response) {
+    }
+}
+
+message Request {
+    uint32 product_id = 1;
+    uint32 count = 2;
+    uint32 user_id = 4;
+    float product_amount_total = 5; //商品总价
+    float order_amount_total = 6; //实际付款总价
+    float logistics_fee = 7; //运费
+    uint32 address_id = 8; //收获地址的id
+    string remark = 9; //备注
+}
+
+message Response {
+    string order_id = 1;
+    string order_no = 2; //订单单号  通过uuid生成
+    uint32 user_id = 3;
+    uint32 status = 4; //订单状态
+    string out_trade_no = 5; //第三方支付流水账号
+    string created_at = 6; //创建时间
+}
